@@ -3,7 +3,7 @@ import * as PIXI3D from 'pixi3d';
 
 import { World, Move } from './world';
 
-type Position = [number, number];
+type Position = [number, number, number];
 
 class Color {
 	static readonly GRAY = new Color(230, 230, 230);
@@ -49,9 +49,9 @@ class Square {
 	dots: [number, PIXI.Graphics][] = [];
 	selected: boolean = false;
 
-	constructor(private world: World, p: [number, number], color: Color) {
-		this.p = [p[0], p[1]];
-		this.resetPosition = [p[0], p[1]];
+	constructor(private world: World, p: [number, number, number], color: Color) {
+		this.p = [p[0], p[1], p[2]];
+		this.resetPosition = [p[0], p[1], p[2]];
 		this.color = color;
 		this.componentStatus = ComponentStatus.NONE;
 		this.chunkId = -1;
@@ -79,110 +79,39 @@ class Square {
 	}
 
 	updatePixi(): void {
+		let material = this.mesh.material! as PIXI3D.StandardMaterial;
 		if (!this.world.showComponentMarks) {
-			(this.mesh.material! as PIXI3D.StandardMaterial).baseColor = new PIXI3D.Color(1, 1, 1);
+			material.baseColor = new PIXI3D.Color(1, 1, 1);
 		} else {
 			switch (this.componentStatus) {
 				case ComponentStatus.CONNECTOR:
-					(this.mesh.material! as PIXI3D.StandardMaterial).baseColor = new PIXI3D.Color(0.45, 0.65, 0.925);
+					material.baseColor = new PIXI3D.Color(0.45, 0.65, 0.925);
 					break;
 				case ComponentStatus.CHUNK_STABLE:
-					(this.mesh.material! as PIXI3D.StandardMaterial).baseColor = new PIXI3D.Color(0.3, 0.5, 0.9);
+					material.baseColor = new PIXI3D.Color(0.3, 0.5, 0.9);
 					break;
 				case ComponentStatus.CHUNK_CUT:
-					(this.mesh.material! as PIXI3D.StandardMaterial).baseColor = new PIXI3D.Color(0.6, 0.8, 0.95);
+					material.baseColor = new PIXI3D.Color(0.6, 0.8, 0.95);
 					break;
 				case ComponentStatus.LINK_STABLE:
-					(this.mesh.material! as PIXI3D.StandardMaterial).baseColor = new PIXI3D.Color(0.9, 0.5, 0.3);
+					material.baseColor = new PIXI3D.Color(0.9, 0.5, 0.3);
 					break;
 				case ComponentStatus.LINK_CUT:
-					(this.mesh.material! as PIXI3D.StandardMaterial).baseColor = new PIXI3D.Color(0.95, 0.8, 0.6);
+					material.baseColor = new PIXI3D.Color(0.95, 0.8, 0.6);
 					break;
 			}
 		}
-		/*this.selectionCircle.clear();
-		this.selectionCircle.lineStyle(15, 0x2277dd);
-		this.selectionCircle.moveTo(-40, -40);
-		this.selectionCircle.lineTo(40, -40);
-		this.selectionCircle.lineTo(40, 40);
-		this.selectionCircle.lineTo(-40, 40);
-		this.selectionCircle.closePath();
-
-		this.circle.clear();
-		this.circle.beginFill(this.color.toHexColor());
-		this.circle.lineStyle(6, 0x222222);
-		this.circle.moveTo(-40, -40);
-		this.circle.lineTo(40, -40);
-		this.circle.lineTo(40, 40);
-		this.circle.lineTo(-40, 40);
-		this.circle.closePath();
-		this.circle.endFill();
-
-		this.componentMark.clear();
-		if (this.world.showComponentMarks) {
-			switch (this.componentStatus) {
-				case ComponentStatus.CONNECTOR:
-					this.componentMark.lineStyle(6, 0x0066CB);
-					this.componentMark.moveTo(-15, -15);
-					this.componentMark.lineTo(15, -15);
-					this.componentMark.lineTo(15, 15);
-					this.componentMark.lineTo(-15, 15);
-					this.componentMark.closePath();
-					this.componentMark.moveTo(-15, -15);
-					this.componentMark.lineTo(15, 15);
-					this.componentMark.moveTo(15, -15);
-					this.componentMark.lineTo(-15, 15);
-					break;
-				case ComponentStatus.CHUNK_STABLE:
-					this.componentMark.beginFill(0x0066CB);
-					this.componentMark.moveTo(-18, -18);
-					this.componentMark.lineTo(18, -18);
-					this.componentMark.lineTo(18, 18);
-					this.componentMark.lineTo(-18, 18);
-					this.componentMark.closePath();
-					this.componentMark.endFill();
-					break;
-				case ComponentStatus.CHUNK_CUT:
-					this.componentMark.lineStyle(6, 0x0066CB);
-					this.componentMark.moveTo(-15, -15);
-					this.componentMark.lineTo(15, -15);
-					this.componentMark.lineTo(15, 15);
-					this.componentMark.lineTo(-15, 15);
-					this.componentMark.closePath();
-					break;
-				case ComponentStatus.LINK_STABLE:
-					this.componentMark.beginFill(0xD5004A);
-					this.componentMark.drawCircle(0, 0, 19);
-					this.componentMark.endFill();
-					break;
-				case ComponentStatus.LINK_CUT:
-					this.componentMark.lineStyle(6, 0xD5004A);
-					this.componentMark.drawCircle(0, 0, 16);
-					break;
-			}
-		}
-
-		this.backgroundPixi.clear();
-		this.backgroundPixi.beginFill(0x000000);
-		this.backgroundPixi.lineStyle(6, 0x000000);
-		this.backgroundPixi.moveTo(40, -40);
-		this.backgroundPixi.lineTo(50, -30);
-		this.backgroundPixi.lineTo(50, 50);
-		this.backgroundPixi.lineTo(-30, 50);
-		this.backgroundPixi.lineTo(-40, 40);
-		this.backgroundPixi.lineTo(-40, -40);
-		this.backgroundPixi.closePath();
-		this.backgroundPixi.endFill();*/
 	}
 
 	updatePosition(time: number, timeStep: number, move?: Move): void {
-		let [x, y] = this.p;
+		let [x, y, z] = this.p;
 		if (move) {
-			[x, y] = move.interpolate(time - timeStep + 1);
+			[x, y, z] = move.interpolate(time - timeStep + 1);
 		}
 
 		this.pixi.x = x;
 		this.pixi.z = -y;
+		this.pixi.y = z;
 	}
 
 	setColor(color: Color): void {

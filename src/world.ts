@@ -2,68 +2,88 @@ import * as PIXI from 'pixi.js';
 import * as PIXI3D from 'pixi3d';
 import { Viewport } from 'pixi-viewport';
 
-import { Color, ComponentStatus, Square } from './square';
+import { Color, ComponentStatus, Position, Square } from './square';
 
+/**
+ * A single cell in the grid. Contains either a cube (with the ID stored) or
+ * nothing (\c null).
+ */
 type WorldCell = {
 	squareId: number | null;
 };
 
+/**
+ * An generator of moves.
+ */
 type Algorithm = Generator<Move, void, undefined>;
 
-enum MoveDirection {
-	N = "N",
-	E = "E",
-	S = "S",
-	W = "W",
-	NW = "NW",
-	NE = "NE",
-	EN = "EN",
-	ES = "ES",
-	SE = "SE",
-	SW = "SW",
-	WS = "WS",
-	WN = "WN"
-}
+/**
+ * Possible moves (slides and convex transitions). Slides are represented by
+ * a single letter (x, y, or z), which is lowercase for the negative direction
+ * and uppercase for the positive direction. Convex transitions are represented
+ * similarly, but by a string of length two.
+ */
+const moveDirections = [
+	'x', 'y', 'z', 'X', 'Y', 'Z',
+	'xy', 'xY', 'xz', 'xZ',
+	'yx', 'yX', 'yz', 'yZ',
+	'zx', 'zX', 'zy', 'zY',
+	'Xy', 'XY', 'Xz', 'XZ',
+	'Yx', 'YX', 'Yz', 'YZ',
+	'Zx', 'ZX', 'Zy', 'ZY'
+];
 
 /**
- * Representation of a single square move (either slide or corner).
+ * Representation of a single cube move (either slide or corner).
  */
 class Move {
-	constructor(public world: World, public position: [number, number], public direction: MoveDirection) {
+	/**
+	 * Creates a move from a starting position and a direction.
+	 */
+	constructor(public world: World, public position: Position, public direction: string) {
+		if (!moveDirections.includes(direction)) {
+			throw new Error('Tried to create move with invalid direction "' + direction + '"');
+		}
 	}
 
 	/**
 	 * Returns the coordinate of the cell we're moving from.
 	 */
-	sourcePosition(): [number, number] {
+	sourcePosition(): [number, number, number] {
 		return this.position;
 	}
 
-	private static targetPositionFromFields(position: [number, number], direction: string): [number, number] {
-		let [x, y] = [...position];
+	private static targetPositionFromFields(position: Position, direction: string): Position {
+		let [x, y, z] = [...position];
 		for (let i = 0; i < direction.length; i++) {
 			switch (direction[i]) {
-				case "N":
-					y++;
+				case "x":
+					x--;
 					break;
-				case "S":
-					y--;
-					break;
-				case "E":
+				case "X":
 					x++;
 					break;
-				case "W":
-					x--;
+				case "y":
+					y--;
+					break;
+				case "Y":
+					y++;
+					break;
+				case "z":
+					z--;
+					break;
+				case "Z":
+					z++;
 					break;
 			}
 		}
-		return [x, y];
+		return [x, y, z];
 	}
 
 	/**
 	 * Returns the coordinate of the cell we're moving towards.
 	 */
-	targetPosition(): [number, number] {
+	targetPosition(): Position {
 		return Move.targetPositionFromFields(this.position, this.direction);
 	}
 
@@ -81,6 +101,7 @@ class Move {
 
 		let has = this.world.hasNeighbors(this.position);
 
+		// TODO ADAPT TO 3D
 		switch (this.direction) {
 			case "N":
 				return (has['W'] && has['NW']) || (has['E'] && has['NE']);
@@ -116,27 +137,30 @@ class Move {
 	 * Computes coordinates of a square executing this move at the given time
 	 * between 0 and 1.
 	 */
-	interpolate(time: number): [number, number] {
+	interpolate(time: number): Position {
 		time = -2 * time * time * time + 3 * time * time;
 
-		let x: number, y: number;
-		const [x1, y1] = this.sourcePosition();
-		const [x2, y2] = this.targetPosition();
+		let x: number, y: number, z: number;
+		const [x1, y1, z1] = this.sourcePosition();
+		const [x2, y2, z2] = this.targetPosition();
 		if (this.direction.length === 2) {
-			const [xm, ym] = Move.targetPositionFromFields(this.position, this.direction[0]);
+			const [xm, ym, zm] = Move.targetPositionFromFields(this.position, this.direction[0]);
 			if (time < 0.5) {
 				x = x1 + (xm - x1) * 2 * time;
 				y = y1 + (ym - y1) * 2 * time;
+				z = z1 + (zm - z1) * 2 * time;
 			} else {
 				x = xm + (x2 - xm) * (2 * time - 1);
 				y = ym + (y2 - ym) * (2 * time - 1);
+				z = zm + (z2 - zm) * (2 * time - 1);
 			}
 		} else {
 			x = x1 + (x2 - x1) * time;
 			y = y1 + (y2 - y1) * time;
+			z = z1 + (z2 - z1) * time;
 		}
 
-		return [x, y];
+		return [x, y, z];
 	}
 
 	execute(): void {
@@ -161,7 +185,7 @@ class Move {
  */
 class World {
 
-	world: WorldCell[][] = [];
+	world: WorldCell[][][] = [];
 	pixi = new PIXI3D.Container3D();
 	squares: Square[] = [];
 	currentMove: Move | null = null;
@@ -206,34 +230,35 @@ class World {
 		this.pipeline.enableShadows(this.ground, this.shadowLight);
 	}
 
-	private getColumn(x: number): WorldCell[] {
+	/**
+	 * Returns the WorldCell at the given coordinate.
+	 */
+	private getCell([x, y, z]: Position): WorldCell {
 		if (!this.world[x]) {
 			this.world[x] = [];
 		}
-		return this.world[x];
-	}
-
-	private getCell([x, y]: [number, number]): WorldCell {
-		let column = this.getColumn(x);
-		if (!column[y]) {
-			column[y] = {
+		if (!this.world[x][y]) {
+			this.world[x][y] = [];
+		}
+		if (!this.world[x][y][z]) {
+			this.world[x][y][z] = {
 				squareId: null
 			};
 		}
-		return column[y];
+		return this.world[x][y][z];
 	}
 
 	/**
 	 * Returns the ID of the square at the given location, or null if that cell is empty.
 	 */
-	getSquareId(p: [number, number]): number | null {
+	private getSquareId(p: Position): number | null {
 		return this.getCell(p).squareId;
 	}
 
 	/**
 	 * Returns the square at the given location, or null if that cell is empty.
 	 */
-	getSquare(p: [number, number]): Square | null {
+	getSquare(p: Position): Square | null {
 		const id = this.getSquareId(p);
 		if (id === null) {
 			return null;
@@ -244,7 +269,7 @@ class World {
 	/**
 	 * Checks if a square exists at the given location.
 	 */
-	hasSquare(p: [number, number]): boolean {
+	hasSquare(p: Position): boolean {
 		return !!this.getSquare(p);
 	}
 
@@ -254,7 +279,7 @@ class World {
 	 */
 	addSquare(square: Square): void {
 		this.addSquareUnmarked(square);
-		this.markComponents();
+		//this.markComponents();
 	}
 
 	/**
@@ -263,7 +288,7 @@ class World {
 	addSquareUnmarked(square: Square): void {
 		if (this.hasSquare(square.p)) {
 			throw new Error(`Tried to insert square on top of another square ` +
-				`at (${square.p[0]}, ${square.p[1]})`);
+				`at (${square.p})`);
 		}
 		this.getCell(square.p).squareId = this.squares.length;
 		this.squares.push(square);
@@ -275,24 +300,24 @@ class World {
 	 * Moves the given square from its current location to the given target
 	 * location. Throws if a square already exists at the target.
 	 */
-	moveSquare(square: Square, to: [number, number]): void {
+	moveSquare(square: Square, to: Position): void {
 		this.moveSquareUnmarked(square, to);
-		this.markComponents();
+		//this.markComponents();
 	}
 
 	/**
 	 * As moveSquare(), but does not update the component status of the squares.
 	 */
-	moveSquareUnmarked(square: Square, to: [number, number]): void {
+	moveSquareUnmarked(square: Square, to: Position): void {
 		if (this.hasSquare(to)) {
 			throw new Error(`Tried to move square on top of another square ` +
-				`at (${to[0]}, ${to[1]})`);
+				`at (${to})`);
 		}
 
 		const id = this.getSquareId(square.p)!;
 		this.getCell(square.p).squareId = null;
 		this.getCell(to).squareId = id;
-		square.p = [to[0], to[1]];
+		square.p = [...to];
 		square.updatePosition(0, 0);
 	}
 
@@ -301,7 +326,7 @@ class World {
 	 */
 	removeSquare(square: Square): void {
 		this.removeSquareUnmarked(square);
-		this.markComponents();
+		//this.markComponents();
 	}
 
 	/**
@@ -340,29 +365,26 @@ class World {
 		});
 		for (let i = 0; i < this.squares.length; i++) {
 			const square = this.squares[i];
-			square.p = [square.resetPosition[0], square.resetPosition[1]];
+			square.p = [...square.resetPosition];
 			square.dots = [];
 			this.getCell(square.p).squareId = i;
 		}
 		this.currentMove = null;
-		this.markComponents();
+		//this.markComponents();
 	}
 
 	/**
-	 * Returns an object with keys 'N', 'NE', 'E', etc. with booleans
+	 * Returns an object with keys 'x', 'X', 'y', etc. with booleans
 	 * indicating if the given cell has neighboring squares in that direction.
 	 */
-	hasNeighbors(p: [number, number]): { [key: string]: boolean } {
-		const [x, y] = p;
+	hasNeighbors([x, y, z]: Position): { [key: string]: boolean } {
 		let has: { [key: string]: boolean } = {};
-		has['N'] = this.hasSquare([x, y + 1]);
-		has['NE'] = this.hasSquare([x + 1, y + 1]);
-		has['E'] = this.hasSquare([x + 1, y]);
-		has['SE'] = this.hasSquare([x + 1, y - 1]);
-		has['S'] = this.hasSquare([x, y - 1]);
-		has['SW'] = this.hasSquare([x - 1, y - 1]);
-		has['W'] = this.hasSquare([x - 1, y]);
-		has['NW'] = this.hasSquare([x - 1, y + 1]);
+		has['x'] = this.hasSquare([x - 1, y, z]);
+		has['X'] = this.hasSquare([x + 1, y, z]);
+		has['y'] = this.hasSquare([x, y - 1, z]);
+		has['Y'] = this.hasSquare([x, y + 1, z]);
+		has['z'] = this.hasSquare([x, y, z - 1]);
+		has['Z'] = this.hasSquare([x, y, z + 1]);
 		return has;
 	}
 
@@ -373,15 +395,15 @@ class World {
 	 * If the configuration would be disconnected without the given square, no
 	 * move is valid, so an empty array is returned.
 	 */
-	validMovesFrom(p: [number, number]): Move[] {
+	validMovesFrom(p: Position): Move[] {
 		let moves: Move[] = [];
 
 		if (!this.isConnected(p)) {
 			return [];
 		}
 
-		for (const direction of Object.keys(MoveDirection)) {
-			const m = new Move(this, p, MoveDirection[<MoveDirection>direction]);
+		for (const direction of moveDirections) {
+			const m = new Move(this, p, direction);
 			if (m.isValidIgnoreConnectivity()) {
 				// already checked connectivity before (yay, efficiency!)
 				moves.push(m);
@@ -394,11 +416,12 @@ class World {
 	/**
 	 * Returns a move from and to the given coordinates.
 	 */
-	getMoveTo(source: Square, target: [number, number]): Move | null {
+	getMoveTo(source: Square, target: Position): Move | null {
 		const moves = this.validMovesFrom(source.p);
 		for (let move of moves) {
 			if (move.targetPosition()[0] === target[0] &&
-				move.targetPosition()[1] === target[1]) {
+				move.targetPosition()[1] === target[1] &&
+				move.targetPosition()[2] === target[2]) {
 				return move;
 			}
 		}
@@ -413,7 +436,7 @@ class World {
 	 * @param from The source coordinate, containing the square we want to move.
 	 * @param to The target coordinate, which should be an empty cell.
 	 */
-	*shortestMovePath(from: [number, number], to: [number, number]): Algorithm {
+	*shortestMovePath(from: Position, to: Position): Algorithm {
 
 		// temporarily remove the origin square from the configuration, to avoid
 		// invalid moves in the resulting move path (because we could slide
@@ -421,24 +444,24 @@ class World {
 		const square = this.getSquare(from);
 		if (square === null) {
 			throw "Cannot compute move path from non-existing square" +
-			` (${from[0]}, ${from[1]})`;
+			` (${from})`;
 		}
 		this.removeSquareUnmarked(square);
 
 		// do BFS over the move graph
 		let seen: { [key: string]: { 'seen': boolean, 'move': Move | null } } = {};
-		let queue: [[number, number], Move | null][] = [[from, null]];
+		let queue: [Position, Move | null][] = [[from, null]];
 
 		while (queue.length !== 0) {
 			const location = queue.shift()!;
-			if (seen[location[0][0] + "," + location[0][1]]) {
+			if (seen[location[0][0] + "," + location[0][1] + "," + location[0][2]]) {
 				continue;
 			}
-			seen[location[0][0] + "," + location[0][1]] = {
+			seen[location[0][0] + "," + location[0][1] + "," + location[0][2]] = {
 				'seen': true,
 				'move': location[1]
 			};
-			if (location[0][0] === to[0] && location[0][1] === to[1]) {
+			if (location[0][0] === to[0] && location[0][1] === to[1] && location[0][2] === to[2]) {
 				// done!
 				break;
 			}
@@ -449,14 +472,14 @@ class World {
 			});
 		}
 
-		if (!seen[to[0] + "," + to[1]]) {
+		if (!seen[to[0] + "," + to[1] + "," + to[2]]) {
 			throw "No move path possible from " + from + " to " + to;
 		}
 
 		// reconstruct the path
 		let path: Move[] = [];
 		let c = to;
-		while (c[0] !== from[0] || c[1] !== from[1]) {
+		while (c[0] !== from[0] || c[1] !== from[1] || c[2] !== from[2]) {
 			let move = seen[c[0] + "," + c[1]].move!;
 			path.unshift(move);
 			c = move.sourcePosition();
@@ -469,166 +492,24 @@ class World {
 	}
 
 	/**
-	 * Finds all loose squares (1-components with consisting of only a single
-	 * square) and returns them in order around the boundary of the
-	 * configuration.
-	 */
-	findLooseSquares(): Square[] {
-		let looseSquares: Square[] = [];
-
-		const outside = this.outsideSquares();
-		for (let i = 1; i < outside.length - 1; i++) {
-			if (outside[i - 1] === outside[i + 1] &&
-				outside[i - 1].componentStatus === ComponentStatus.CONNECTOR) {
-				looseSquares.push(outside[i]);
-			}
-		}
-		if (outside.length > 1 &&
-			outside[outside.length - 2] === outside[1] &&
-			outside[1].componentStatus === ComponentStatus.CONNECTOR) {
-			looseSquares.push(outside[0]);
-		}
-
-		return looseSquares;
-	}
-
-	/**
-	 * Given two loose squares, move the first loose square to be adjacent to the
-	 * second one, so that they are both not loose squares anymore.
-	 */
-	*mergeLooseSquares(c1: Square, c2: Square): Algorithm {
-		let [x, y] = c2.p;
-		let has = this.hasNeighbors(c2.p);
-		let target: [number, number];
-		if (has['N']) {
-			target = [x - 1, y];
-		} else if (has['W']) {
-			target = [x, y - 1];
-		} else if (has['S']) {
-			target = [x + 1, y];
-		} else if (has['E']) {
-			target = [x, y + 1];
-		}
-		yield* this.shortestMovePath(c1.p, target!);
-	}
-
-	/**
-	 * Checks if the column with the given x-coordinate does not contain any
-	 * squares.
-	 */
-	columnEmpty(x: number): boolean {
-		for (let square of this.squares) {
-			if (square.p[0] === x) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	/**
-	 * Checks if the row with the given y-coordinate does not contain any
-	 * squares.
-	 */
-	rowEmpty(y: number): boolean {
-		for (let square of this.squares) {
-			if (square.p[1] === y) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	/**
-	 * Returns the degree of the given square (in 4-connectivity).
+	 * Returns the degree of the given cube (in 6-connectivity).
 	 */
 	degree(square: Square): number {
 		const has = this.hasNeighbors(square.p);
 		let count = 0;
-		if (has['N']) {
-			count++;
-		}
-		if (has['E']) {
-			count++;
-		}
-		if (has['S']) {
-			count++;
-		}
-		if (has['W']) {
-			count++;
+		for (let direction of 'xXyYzZ') {
+			if (has[direction]) {
+				count++;
+			}
 		}
 		return count;
-	}
-
-	/**
-	 * Returns a neighbor of the given square.
-	 */
-	getOneNeighbor(square: Square): Square | null {
-		const [x, y] = square.p;
-		let neighbor = this.getSquare([x + 1, y]);
-		if (neighbor) {
-			return neighbor;
-		}
-		neighbor = this.getSquare([x - 1, y]);
-		if (neighbor) {
-			return neighbor;
-		}
-		neighbor = this.getSquare([x, y + 1]);
-		if (neighbor) {
-			return neighbor;
-		}
-		neighbor = this.getSquare([x, y - 1]);
-		if (neighbor) {
-			return neighbor;
-		}
-		return null;
-	}
-
-	/**
-	 * Returns all neighbors of the given grid coordinate.
-	 */
-	getNeighbors([x, y]: [number, number]): Square[] {
-		let neighbors = [];
-		let neighbor = this.getSquare([x + 1, y]);
-		if (neighbor) {
-			neighbors.push(neighbor);
-		}
-		neighbor = this.getSquare([x - 1, y]);
-		if (neighbor) {
-			neighbors.push(neighbor);
-		}
-		neighbor = this.getSquare([x, y + 1]);
-		if (neighbor) {
-			neighbors.push(neighbor);
-		}
-		neighbor = this.getSquare([x, y - 1]);
-		if (neighbor) {
-			neighbors.push(neighbor);
-		}
-		return neighbors;
-	}
-
-	/**
-	 * Returns all neighbors of the given grid coordinate, as a dictionary
-	 * mapping compass directions to Squares.
-	 */
-	getNeighborMap([x, y]: [number, number]): { [direction: string]: Square | null } {
-		let neighbors: { [direction: string]: Square | null } = {};
-		neighbors['N'] = this.getSquare([x, y + 1]);
-		neighbors['E'] = this.getSquare([x + 1, y]);
-		neighbors['W'] = this.getSquare([x - 1, y]);
-		neighbors['S'] = this.getSquare([x, y - 1]);
-		neighbors['NE'] = this.getSquare([x + 1, y + 1]);
-		neighbors['NW'] = this.getSquare([x - 1, y + 1]);
-		neighbors['SW'] = this.getSquare([x - 1, y - 1]);
-		neighbors['SE'] = this.getSquare([x + 1, y - 1]);
-		return neighbors;
 	}
 
 	/**
 	 * Checks if the configuration is connected. If the skip parameter is
 	 * provided, that square is ignored (considered as non-existing).
 	 */
-	isConnected(skip?: [number, number]): boolean {
+	isConnected(skip?: Position): boolean {
 		if (!this.squares.length) {
 			return true;
 		}
@@ -668,10 +549,12 @@ class World {
 			seenCount++;
 
 			const neighbors = [
-				this.getCell([square.p[0] - 1, square.p[1]]),
-				this.getCell([square.p[0] + 1, square.p[1]]),
-				this.getCell([square.p[0], square.p[1] - 1]),
-				this.getCell([square.p[0], square.p[1] + 1])
+				this.getCell([square.p[0] - 1, square.p[1], square.p[2]]),
+				this.getCell([square.p[0] + 1, square.p[1], square.p[2]]),
+				this.getCell([square.p[0], square.p[1] - 1, square.p[2]]),
+				this.getCell([square.p[0], square.p[1] + 1, square.p[2]]),
+				this.getCell([square.p[0], square.p[1], square.p[2] - 1]),
+				this.getCell([square.p[0], square.p[1], square.p[2] + 1])
 			];
 			neighbors.forEach(function (c) {
 				if (c.squareId) {
@@ -684,232 +567,18 @@ class World {
 	}
 
 	/**
-	 * Checks if the given grid cell is within a hole of the configuration.
-	 * (Assuming 4-connectivity.)
+	 * Returns the minimum and maximum x-, y-, and z-coordinates of squares in
+	 * the configuration, as an array [minX, minY, minZ, maxX, maxY, maxZ].
 	 */
-	isInside(p: [number, number]): boolean {
-		// try to find a path to
-		const bounds = this.bounds();
-		const origin: [number, number] = [bounds[0] - 1, bounds[1] - 1];
-
-		// do a BFS from the origin, to see if we can find p
-		// (FIXME: this is stupid, can probably be done better...)
-		let seen: { [key: string]: boolean } = {};
-		let queue: [number, number][] = [origin];
-
-		while (queue.length !== 0) {
-			const location = queue.shift()!;
-			if (location[0] < bounds[0] - 1 || location[1] < bounds[1] - 1 ||
-				location[0] > bounds[2] + 1 || location[1] > bounds[3] + 1) {
-				continue;
-			}
-			if (seen[location[0] + "," + location[1]]) {
-				continue;
-			}
-			seen[location[0] + "," + location[1]] = true;
-			if (location[0] === p[0] && location[1] === p[1]) {
-				// done!
-				return false;
-			}
-
-			const neighbors: [number, number][] = [
-				[location[0] - 1, location[1]],
-				[location[0] + 1, location[1]],
-				[location[0], location[1] - 1],
-				[location[0], location[1] + 1]
-			];
-			const self = this;
-			neighbors.forEach(function (c) {
-				if (!self.hasSquare(c)) {
-					queue.push(c);
-				}
-			});
-		}
-
-		return true;
-	}
-
-	/**
-	 * Returns the minimum and maximum x- and y-coordinates of squares in the
-	 * configuration, as an array [minX, minY, maxX, maxY].
-	 */
-	bounds(): [number, number, number, number] {
+	bounds(): [number, number, number, number, number, number] {
 		return [
 			this.squares.map((square) => square.p[0]).min(),
 			this.squares.map((square) => square.p[1]).min(),
+			this.squares.map((square) => square.p[2]).min(),
 			this.squares.map((square) => square.p[0]).max(),
-			this.squares.map((square) => square.p[1]).max()
+			this.squares.map((square) => square.p[1]).max(),
+			this.squares.map((square) => square.p[2]).max()
 		];
-	}
-
-	/**
-	 * Returns the length of the perimeter of the bounding box.
-	 */
-	boundingBoxPerimeterLength(): number {
-		const bounds = this.bounds();
-		const width = bounds[2] - bounds[0] + 1;
-		const height = bounds[3] - bounds[1] + 1;
-		return 2 * (width + height);
-	}
-
-	/**
-	 * Returns the leftmost square in the downmost row that contains squares.
-	 */
-	downmostLeftmost(): Square | null {
-		if (!this.squares.length) {
-			return null;
-		}
-
-		const lowestY = this.squares
-			.map((square) => square.p[1])
-			.min();
-
-		const lowestX = this.squares
-			.filter((square) => square.p[1] === lowestY)
-			.map((square) => square.p[0])
-			.min();
-
-		return this.getSquare([lowestX, lowestY]);
-	}
-
-	/**
-	 * Colors the squares by their connectivity, and set their connectivity
-	 * fields.
-	 */
-	markComponents(): void {
-		const [components, chunkIds] = this.findComponents();
-		const stable = this.findSquareStability();
-		for (let i = 0; i < this.squares.length; i++) {
-			if (components[i] === 2) {
-				this.squares[i].setComponentStatus(stable[i] ? ComponentStatus.CHUNK_STABLE : ComponentStatus.CHUNK_CUT);
-			} else if (components[i] === 1) {
-				this.squares[i].setComponentStatus(stable[i] ? ComponentStatus.LINK_STABLE : ComponentStatus.LINK_CUT);
-			} else if (components[i] === 3) {
-				this.squares[i].setComponentStatus(ComponentStatus.CONNECTOR);
-			} else {
-				this.squares[i].setComponentStatus(ComponentStatus.NONE);
-			}
-			this.squares[i].setChunkId(chunkIds[i]);
-		}
-
-		for (const c of this.squares) {
-			c.onBoundary = false;
-		}
-
-		for (const c of this.outsideSquares()) {
-			c.onBoundary = true;
-		}
-	}
-
-	/**
-	 * Returns a list of component values for each square.
-	 *
-	 * This returns two arrays. The first array indicates for each square the
-	 * component status: 1 and 2 mean that the square is in a link or chunk,
-	 * respectively, while 3 means that the square is a connector (that is, in
-	 * more than one component). The second array contains the ID of the chunk
-	 * the square is in. If the square is a connector and in more than one chunk,
-	 * the chunk ID of the chunk closer to the root is returned. Squares that
-	 * are not in a chunk get chunk ID -1.
-	 *
-	 * If the configuration is disconnected, this returns -1 for both component
-	 * status and chunk IDs.
-	 */
-	findComponents(): [number[], number[]] {
-
-		let components = Array(this.squares.length).fill(-1);
-		let chunkIds = Array(this.squares.length).fill(-1);
-
-		// don't try to find components if the configuration is disconnected
-		if (!this.squares.length || !this.isConnected()) {
-			return [components, chunkIds];
-		}
-
-		let seen = Array(this.squares.length).fill(false);
-		const outside = this.outsideSquares();
-		let stack = [];
-		let chunksSeen = 0;
-
-		// walk over the outside
-		for (let i = 0; i < outside.length; i++) {
-			const square = outside[i];
-			const squareId = this.getSquareId(square.p)!;
-
-			// if we've not seen this square, put it on the stack
-			// else mark its component and pop it
-			if (!seen[squareId]) {
-				seen[squareId] = true;
-				stack.push(squareId);
-			} else if (stack.length >= 1 && stack[stack.length - 2] === squareId) {
-				const cId = stack.pop()!;
-				if (components[cId] === -1) {
-					components[cId] = 1;
-				}
-				if (components[squareId] === -1) {
-					components[squareId] = 1;
-				}
-			} else {
-				// pop entire 2-component in one go
-				while (stack.length > 1 && stack[stack.length - 1] !== squareId) {
-					const cId = stack.pop()!;
-					components[cId] = components[cId] !== -1 ? 3 : 2;
-					chunkIds[cId] = chunksSeen;
-				}
-				// mark attachment point as cross (except if stack is empty)
-				const cId = stack[stack.length - 1];
-				components[cId] = stack.length > 1 ? 3 : 2;
-				chunkIds[cId] = chunksSeen;
-				chunksSeen++;
-			}
-		}
-
-		// if origin wasn't put in a component yet, it needs to be a
-		// 1-component
-		const originId = this.getSquareId(outside[0].p)!;
-		if (components[originId] === -1) {
-			components[originId] = 1;
-		}
-
-		// and all remaining squares not in a component need to be on the inside
-		// of a 2-component
-		for (let i = 0; i < components.length; i++) {
-			if (components[i] === -1) {
-				components[i] = 2;
-			}
-		}
-
-		// mark loose squares as part of a chunk
-		for (let i = 0; i < components.length; i++) {
-			if (components[i] === 1 &&
-				this.degree(this.squares[i]) === 1) {
-				const neighbor = this.getOneNeighbor(this.squares[i])!;
-				const neighborIndex = this.getSquareId(neighbor.p)!;
-				if (components[neighborIndex] === 3) {
-					components[i] = 2;
-					chunkIds[i] = chunkIds[neighborIndex];
-					const [x, y] = neighbor.p;
-					let cs = [
-						this.getSquare([x - 1, y]),
-						this.getSquare([x + 1, y]),
-						this.getSquare([x, y - 1]),
-						this.getSquare([x, y + 1])
-					];
-					let shouldRemoveConnector = true;
-					for (let c of cs) {
-						if (c) {
-							if (components[this.getSquareId(c.p)!] === 1) {
-								shouldRemoveConnector = false;
-							}
-						}
-					}
-					if (shouldRemoveConnector) {
-						components[this.getSquareId(neighbor.p)!] = 2;
-					}
-				}
-			}
-		}
-
-		return [components, chunkIds];
 	}
 
 	/**
@@ -942,10 +611,12 @@ class World {
 		let square = this.squares[i];
 
 		const neighbors = [
-			this.getCell([square.p[0] - 1, square.p[1]]),
-			this.getCell([square.p[0] + 1, square.p[1]]),
-			this.getCell([square.p[0], square.p[1] - 1]),
-			this.getCell([square.p[0], square.p[1] + 1])
+			this.getCell([square.p[0] - 1, square.p[1], square.p[2]]),
+			this.getCell([square.p[0] + 1, square.p[1], square.p[2]]),
+			this.getCell([square.p[0], square.p[1] - 1, square.p[2]]),
+			this.getCell([square.p[0], square.p[1] + 1, square.p[2]]),
+			this.getCell([square.p[0], square.p[1], square.p[2] - 1]),
+			this.getCell([square.p[0], square.p[1], square.p[2] + 1])
 		];
 		const self = this;
 		let cutSquare = false;
@@ -972,156 +643,22 @@ class World {
 	}
 
 	/**
-	 * Finds a leaf component in the component tree.
-	 *
-	 * Returns the attachment point of the leaf component or null if the
-	 * component tree consists of only a single node.
+	 * Determines if the configuration is xyz-monotone.
 	 */
-	findLeaf(): [Square, number] | null {
-
-		let seen = Array(this.squares.length).fill(false);
-		let outside = this.outsideSquares();
-		let stack = [];
-
-		// walk over the outside
-		for (let i = 0; i < outside.length; i++) {
-			const square = outside[i];
-			const squareId = this.getSquareId(square.p)!;
-
-			if (!seen[squareId]) {
-				seen[squareId] = true;
-				stack.push(squareId);
-			} else if (stack.length >= 1 && stack[stack.length - 2] === squareId) {
-				return [square, 1];
-			} else {
-				return [square, 2];
-			}
-		}
-
-		return null;
-	}
-
-	/**
-	 * Returns a list of squares on the outside of the configuration, in
-	 * counter-clockwise order, starting with the downmost-leftmost square.
-	 * The downmost-leftmost square is included twice (both as the first and as
-	 * the last element in the list).
-	 */
-	outsideSquares(): Square[] {
-		if (!this.squares.length) {
-			return [];
-		}
-		const start = this.downmostLeftmost()!;
-		let outside: Square[] = [];
-		let edgesSeen = new Set();
-		let position: [number, number] = [start.p[0], start.p[1]];
-		let direction: string | null = 'S';
-		while (true) {
-			let square = this.getSquare(position)!;
-			outside.push(square);
-			direction = this.nextOnOutside(position, direction);
-			if (!direction) {
-				break;
-			}
-			let newEdge = square.p[0] + " " + square.p[1] + " " + direction;
-			if (edgesSeen.has(newEdge)) {
-				break;
-			}
-			edgesSeen.add(newEdge);
-			switch (direction) {
-				case 'N':
-					position[1]++;
-					break;
-				case 'E':
-					position[0]++;
-					break;
-				case 'S':
-					position[1]--;
-					break;
-				case 'W':
-					position[0]--;
-					break;
-			}
-		}
-		return outside;
-	}
-
-	/**
-	 * Given a position and the direction of the previous segment of the
-	 * outside, returns the direction of the next outside segment.
-	 */
-	private nextOnOutside(p: [number, number], direction: string): string | null {
-		const has = this.hasNeighbors(p);
-		const bends: { [key: string]: string[] } = {
-			'N': ['E', 'N', 'W', 'S'],
-			'E': ['S', 'E', 'N', 'W'],
-			'S': ['W', 'S', 'E', 'N'],
-			'W': ['N', 'W', 'S', 'E'],
-		};
-		for (let i = 0; i < 4; i++) {
-			const dir = bends[direction][i];
-			if (has[dir]) {
-				return dir;
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Given a square, determines the number of squares in its descendant(s).
-	 */
-	capacity(b: Square): number {
-
-		// do a BFS from the root, but ignore b
-		let seen = Array(this.squares.length).fill(false);
-		const bId = this.getSquareId(b.p)!;
-		seen[bId] = true;
-		let squareCount = 1;
-
-		const originId = this.getSquareId(this.downmostLeftmost()!.p);
-		let queue = [originId];
-
-		while (queue.length !== 0) {
-			const squareId = queue.shift()!;
-			if (seen[squareId]) {
-				continue;
-			}
-
-			const square = this.squares[squareId];
-			seen[squareId] = true;
-			if (bId !== squareId) {
-				squareCount++;
-			}
-
-			const neighbors = [
-				this.getCell([square.p[0] - 1, square.p[1]]),
-				this.getCell([square.p[0] + 1, square.p[1]]),
-				this.getCell([square.p[0], square.p[1] - 1]),
-				this.getCell([square.p[0], square.p[1] + 1])
-			];
-			neighbors.forEach(function (c) {
-				if (c.squareId !== null) {
-					queue.push(c.squareId);
-				}
-			});
-		}
-
-		return this.squares.length - squareCount;
-	}
-
-	/**
-	 * Determines if the configuration is xy-monotone.
-	 */
-	isXYMonotone(): boolean {
-		const [minX, minY, ,] = this.bounds();
+	isXYZMonotone(): boolean {
+		const [minX, minY, minZ, , , ] = this.bounds();
 
 		for (const square of this.squares) {
 			if (square.p[0] !== minX &&
-				!this.hasSquare([square.p[0] - 1, square.p[1]])) {
+				!this.hasSquare([square.p[0] - 1, square.p[1], square.p[2]])) {
 				return false;
 			}
 			if (square.p[1] !== minY &&
-				!this.hasSquare([square.p[0], square.p[1] - 1])) {
+				!this.hasSquare([square.p[0], square.p[1] - 1, square.p[2]])) {
+				return false;
+			}
+			if (square.p[2] !== minZ &&
+				!this.hasSquare([square.p[0], square.p[1], square.p[2] - 1])) {
 				return false;
 			}
 		}
@@ -1138,11 +675,12 @@ class World {
 			squares.push({
 				'x': square.resetPosition[0],
 				'y': square.resetPosition[1],
+				'z': square.resetPosition[2],
 				'color': [square.color.r, square.color.g, square.color.b]
 			});
 		});
 		let obj: any = {
-			'_version': 2,
+			'_version': 1,
 			'squares': squares
 		};
 		return JSON.stringify(obj);
@@ -1156,7 +694,7 @@ class World {
 		let obj: any = JSON.parse(data);
 
 		const version = obj['_version'];
-		if (version > 2) {
+		if (version > 1) {
 			throw new Error('Save file with incorrect version');
 		}
 
@@ -1167,68 +705,9 @@ class World {
 				color = new Color(square['color'][0],
 					square['color'][1], square['color'][2]);
 			}
-			this.addSquare(new Square(this, [square['x'], square['y']], color));
+			this.addSquare(new Square(this, [square['x'], square['y'], square['z']], color));
 		});
-	}
-
-	/**
-	 * Generates an Ipe drawing from this world.
-	 */
-	toIpe(): string {
-		let header = '<ipeselection pos="0 0">\n';
-		let footer = '</ipeselection>\n';
-
-		let elements = '';
-
-		// shadows
-		this.squares.forEach((square) => {
-			let x = 8 * square.p[0];
-			let y = 8 * square.p[1];
-			elements += `<path stroke="Gray 0.7" fill="Gray 0.7" pen="heavier" cap="1" join="1">
-${x + 8} ${y + 8} m
-${x + 9} ${y + 7} l
-${x + 9} ${y - 1} l
-${x + 1} ${y - 1} l
-${x} ${y} l
-${x + 8} ${y} l
-h
-</path>\n`;
-		});
-
-		// squares
-		this.squares.forEach((square) => {
-			let x = 8 * square.p[0];
-			let y = 8 * square.p[1];
-			elements += `<path stroke="black" fill="Gray 0.9" pen="heavier" cap="1" join="1">
-${x} ${y + 8} m
-${x} ${y} l
-${x + 8} ${y} l
-${x + 8} ${y + 8} l
-h
-</path>\n`;
-
-			switch (square.componentStatus) {
-				case ComponentStatus.CHUNK_STABLE:
-					elements += `<use layer="squares" name="mark/square(sx)" pos="${x + 4} ${y + 4}" size="normal" stroke="Bettina blue"/>\n`;
-					break;
-				case ComponentStatus.LINK_STABLE:
-					elements += `<use layer="squares" name="mark/disk(sx)" pos="${x + 4} ${y + 4}" size="normal" stroke="Bettina red"/>\n`;
-					break;
-				case ComponentStatus.CHUNK_CUT:
-					elements += `<use layer="squares" name="mark/box(sx)" pos="${x + 4} ${y + 4}" size="normal" stroke="Bettina blue"/>\n`;
-					break;
-				case ComponentStatus.LINK_CUT:
-					elements += `<use layer="squares" name="mark/circle(sx)" pos="${x + 4} ${y + 4}" size="normal" stroke="Bettina red"/>\n`;
-					break;
-				case ComponentStatus.CONNECTOR:
-					elements += `<use layer="squares" name="mark/box(sx)" pos="${x + 4} ${y + 4}" size="normal" stroke="Bettina blue"/>\n`;
-					elements += `<use layer="squares" name="mark/cross(sx)" pos="${x + 4} ${y + 4}" size="normal" stroke="Bettina blue"/>\n`;
-					break;
-			}
-		});
-
-		return header + elements + footer;
 	}
 }
 
-export { Algorithm, World, Move, MoveDirection };
+export { Algorithm, World, Move, moveDirections };
