@@ -70,12 +70,43 @@ class Square {
 		this.mesh.position.set(0, 0, 0);
 		this.pixi.addChild(this.mesh);
 
-		/*this.foregroundPixi.addChild(this.selectionCircle);
-		this.pixi.addChild(this.circle);
-		this.pixi.addChild(this.componentMark);*/
+		this.addShield([-1, 0, 0], [0, 0, 90]);  // x
+		this.addShield([1, 0, 0], [0, 0, -90]);  // X
+		this.addShield([0, -1, 0], [90, 0, 0]);  // y
+		this.addShield([0, 1, 0], [-90, 0, 0]);  // Y
+		this.addShield([0, 0, -1], [180, 0, 0]);  // z
+		this.addShield([0, 0, 1], [0, 0, 0]);  // Z
+
 		this.updatePixi();
 
 		this.updatePosition(0, 0);
+	}
+
+	private addShield(p: Position, [rx, ry, rz]: [number, number, number]): void {
+		let shield = PIXI3D.Mesh3D.createPlane();
+		this.pixi.addChild(shield);
+		shield.scale.set(0.5);
+		shield.position.set(p[0] * 0.5, p[2] * 0.5, -p[1] * 0.5);
+		shield.rotationQuaternion.setEulerAngles(rx, ry, rz);
+		shield.interactive = true;
+		shield.alpha = 0;
+		shield.hitArea = new PIXI3D.PickingHitArea(undefined, shield);
+		let newCubePosition: Position = [
+			this.p[0] + p[0], this.p[1] + p[1], this.p[2] + p[2]];
+		shield.on("pointerover", () => {
+			if (!this.world.hasSquare(newCubePosition)) {
+				this.world.showPhantomCube(newCubePosition);
+			}
+		});
+		shield.on("pointerout", () => {
+			this.world.hidePhantomCube();
+		});
+		shield.on("pointerdown", () => {
+			if (!this.world.hasSquare(newCubePosition)) {
+				this.world.hidePhantomCube();
+				this.world.addSquare(new Square(this.world, newCubePosition, this.color));
+			}
+		});
 	}
 
 	updatePixi(): void {

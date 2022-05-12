@@ -193,6 +193,7 @@ class World {
 
 	ground: PIXI3D.Mesh3D;
 	shadowLight: PIXI3D.ShadowCastingLight;
+	phantomCube: PIXI3D.Mesh3D;
 
 	pipeline: PIXI3D.StandardPipeline;
 
@@ -228,6 +229,30 @@ class World {
 
 		this.pipeline = renderer.plugins.pipeline;
 		this.pipeline.enableShadows(this.ground, this.shadowLight);
+
+		// phantom cube for showing where a new cube will be added
+		let material = new PIXI3D.StandardMaterial();
+		material.baseColor = new PIXI3D.Color(1, 1, 1, 0.4);
+		material.exposure = 1.5;
+		material.metallic = 0.3;
+		material.roughness = 0.5;
+		material.alphaMode = PIXI3D.StandardMaterialAlphaMode.blend;
+		// @ts-ignore
+		this.phantomCube = PIXI3D.Model.from(PIXI.Loader.shared.resources["cube.gltf"]['gltf']).meshes[0];
+		this.phantomCube.material = material;
+		this.phantomCube.visible = false;
+		this.pixi.addChild(this.phantomCube);
+	}
+
+	showPhantomCube([x, y, z]: Position): void {
+		this.pixi.removeChild(this.phantomCube);
+		this.pixi.addChild(this.phantomCube);
+		this.phantomCube.position.set(x, z, -y);
+		this.phantomCube.visible = true;
+	}
+
+	hidePhantomCube(): void {
+		this.phantomCube.visible = false;
 	}
 
 	/**
