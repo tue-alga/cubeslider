@@ -1,4 +1,5 @@
 import * as PIXI from 'pixi.js';
+import * as PIXI3D from 'pixi3d';
 
 import { Square, Color } from './square';
 import { World, Move } from './world';
@@ -19,9 +20,9 @@ enum SimulationMode {
 }
 
 /**
- * The main class of SquareSlider.
+ * The main class of CubeSlider.
  */
-class SquaresSimulator {
+class CubeSlider {
 
 	readonly AVAILABLE_ALGORITHMS: { [name: string]: new (world: World) => { execute(): Generator<Move, void, undefined> } } = {
 		"Gather & Compact": GatherAndCompactAlgorithm,
@@ -87,7 +88,7 @@ class SquaresSimulator {
 	constructor(app: PIXI.Application) {
 		this.app = app;
 
-		this.world = new World();
+		this.world = new World(app);
 
 		this.topBar = new Toolbar(false);
 
@@ -219,6 +220,8 @@ class SquaresSimulator {
 		});
 
 		const welcomeLoadButton = document.getElementById('welcome-load-button');
+		// TODO temporary hack
+		this.load('{"_version":2,"squares":[{"x":0,"y":0,"color":[230,230,230]},{"x":0,"y":1,"color":[230,230,230]},{"x":0,"y":2,"color":[230,230,230]},{"x":0,"y":3,"color":[230,230,230]},{"x":2,"y":3,"color":[230,230,230]},{"x":1,"y":3,"color":[230,230,230]},{"x":2,"y":5,"color":[230,230,230]},{"x":2,"y":4,"color":[230,230,230]},{"x":1,"y":6,"color":[230,230,230]},{"x":2,"y":6,"color":[230,230,230]},{"x":2,"y":7,"color":[230,230,230]},{"x":2,"y":8,"color":[230,230,230]},{"x":1,"y":8,"color":[230,230,230]},{"x":0,"y":8,"color":[230,230,230]},{"x":0,"y":7,"color":[230,230,230]},{"x":0,"y":6,"color":[230,230,230]},{"x":1,"y":7,"color":[230,230,230]},{"x":-1,"y":2,"color":[230,230,230]},{"x":-2,"y":2,"color":[230,230,230]},{"x":-3,"y":2,"color":[230,230,230]},{"x":-4,"y":2,"color":[230,230,230]},{"x":-4,"y":3,"color":[230,230,230]},{"x":-4,"y":4,"color":[230,230,230]},{"x":-4,"y":5,"color":[230,230,230]},{"x":-3,"y":6,"color":[230,230,230]},{"x":-4,"y":7,"color":[230,230,230]},{"x":-4,"y":6,"color":[230,230,230]},{"x":-2,"y":7,"color":[230,230,230]},{"x":-3,"y":7,"color":[230,230,230]},{"x":-2,"y":6,"color":[230,230,230]},{"x":5,"y":4,"color":[230,230,230]},{"x":4,"y":4,"color":[230,230,230]},{"x":3,"y":4,"color":[230,230,230]},{"x":-3,"y":1,"color":[230,230,230]},{"x":-3,"y":0,"color":[230,230,230]},{"x":-3,"y":-1,"color":[230,230,230]},{"x":-3,"y":-2,"color":[230,230,230]},{"x":-4,"y":-2,"color":[230,230,230]},{"x":-5,"y":-2,"color":[230,230,230]},{"x":-6,"y":-2,"color":[230,230,230]},{"x":-7,"y":-2,"color":[230,230,230]},{"x":1,"y":0,"color":[230,230,230]},{"x":3,"y":0,"color":[230,230,230]},{"x":2,"y":-1,"color":[230,230,230]},{"x":2,"y":-2,"color":[230,230,230]},{"x":2,"y":0,"color":[230,230,230]},{"x":4,"y":0,"color":[230,230,230]},{"x":5,"y":0,"color":[230,230,230]},{"x":5,"y":1,"color":[230,230,230]},{"x":6,"y":2,"color":[230,230,230]},{"x":5,"y":2,"color":[230,230,230]},{"x":6,"y":1,"color":[230,230,230]},{"x":6,"y":0,"color":[230,230,230]},{"x":7,"y":0,"color":[230,230,230]},{"x":7,"y":1,"color":[230,230,230]},{"x":7,"y":2,"color":[230,230,230]},{"x":5,"y":6,"color":[230,230,230]},{"x":5,"y":5,"color":[230,230,230]},{"x":6,"y":6,"color":[230,230,230]},{"x":7,"y":6,"color":[230,230,230]},{"x":5,"y":7,"color":[230,230,230]},{"x":6,"y":8,"color":[230,230,230]},{"x":7,"y":7,"color":[230,230,230]},{"x":6,"y":7,"color":[230,230,230]},{"x":7,"y":8,"color":[230,230,230]},{"x":5,"y":8,"color":[230,230,230]},{"x":2,"y":-3,"color":[230,230,230]},{"x":3,"y":-3,"color":[230,230,230]},{"x":4,"y":-3,"color":[230,230,230]},{"x":4,"y":-4,"color":[230,230,230]},{"x":4,"y":-5,"color":[230,230,230]},{"x":3,"y":-5,"color":[230,230,230]},{"x":2,"y":-5,"color":[230,230,230]},{"x":2,"y":-4,"color":[230,230,230]},{"x":3,"y":-4,"color":[230,230,230]},{"x":-4,"y":-3,"color":[230,230,230]},{"x":-4,"y":-4,"color":[230,230,230]},{"x":-4,"y":-6,"color":[230,230,230]},{"x":-4,"y":-5,"color":[230,230,230]},{"x":-3,"y":-6,"color":[230,230,230]},{"x":-2,"y":-6,"color":[230,230,230]},{"x":-2,"y":-7,"color":[230,230,230]},{"x":-2,"y":-8,"color":[230,230,230]},{"x":-1,"y":-8,"color":[230,230,230]},{"x":0,"y":-8,"color":[230,230,230]},{"x":0,"y":-7,"color":[230,230,230]},{"x":0,"y":-6,"color":[230,230,230]},{"x":-1,"y":-6,"color":[230,230,230]},{"x":-1,"y":-7,"color":[230,230,230]},{"x":-1,"y":-2,"color":[230,230,230]},{"x":-1,"y":-3,"color":[230,230,230]},{"x":-7,"y":-1,"color":[230,230,230]},{"x":-7,"y":0,"color":[230,230,230]},{"x":-7,"y":1,"color":[230,230,230]},{"x":-8,"y":1,"color":[230,230,230]},{"x":-9,"y":0,"color":[230,230,230]},{"x":-9,"y":1,"color":[230,230,230]},{"x":-8,"y":0,"color":[230,230,230]},{"x":-9,"y":2,"color":[230,230,230]},{"x":-8,"y":2,"color":[230,230,230]},{"x":-7,"y":2,"color":[230,230,230]},{"x":-8,"y":-2,"color":[230,230,230]},{"x":-8,"y":-3,"color":[230,230,230]},{"x":-8,"y":-4,"color":[230,230,230]},{"x":-8,"y":-5,"color":[230,230,230]},{"x":-7,"y":-5,"color":[230,230,230]},{"x":-7,"y":-6,"color":[230,230,230]},{"x":-7,"y":-7,"color":[230,230,230]},{"x":-8,"y":-7,"color":[230,230,230]},{"x":-9,"y":-7,"color":[230,230,230]},{"x":-5,"y":4,"color":[230,230,230]},{"x":-6,"y":4,"color":[230,230,230]},{"x":-6,"y":5,"color":[230,230,230]},{"x":-7,"y":5,"color":[230,230,230]},{"x":-8,"y":5,"color":[230,230,230]},{"x":-8,"y":6,"color":[230,230,230]},{"x":-8,"y":7,"color":[230,230,230]},{"x":-8,"y":8,"color":[230,230,230]},{"x":-4,"y":8,"color":[230,230,230]},{"x":-3,"y":8,"color":[230,230,230]},{"x":-2,"y":8,"color":[230,230,230]},{"x":-3,"y":-4,"color":[230,230,230]},{"x":-2,"y":-4,"color":[230,230,230]},{"x":-1,"y":-4,"color":[230,230,230]}]}');
 		welcomeLoadButton!.addEventListener('click', () => {
 			this.load('{"_version":2,"squares":[{"x":0,"y":0,"color":[230,230,230]},{"x":0,"y":1,"color":[230,230,230]},{"x":0,"y":2,"color":[230,230,230]},{"x":0,"y":3,"color":[230,230,230]},{"x":2,"y":3,"color":[230,230,230]},{"x":1,"y":3,"color":[230,230,230]},{"x":2,"y":5,"color":[230,230,230]},{"x":2,"y":4,"color":[230,230,230]},{"x":1,"y":6,"color":[230,230,230]},{"x":2,"y":6,"color":[230,230,230]},{"x":2,"y":7,"color":[230,230,230]},{"x":2,"y":8,"color":[230,230,230]},{"x":1,"y":8,"color":[230,230,230]},{"x":0,"y":8,"color":[230,230,230]},{"x":0,"y":7,"color":[230,230,230]},{"x":0,"y":6,"color":[230,230,230]},{"x":1,"y":7,"color":[230,230,230]},{"x":-1,"y":2,"color":[230,230,230]},{"x":-2,"y":2,"color":[230,230,230]},{"x":-3,"y":2,"color":[230,230,230]},{"x":-4,"y":2,"color":[230,230,230]},{"x":-4,"y":3,"color":[230,230,230]},{"x":-4,"y":4,"color":[230,230,230]},{"x":-4,"y":5,"color":[230,230,230]},{"x":-3,"y":6,"color":[230,230,230]},{"x":-4,"y":7,"color":[230,230,230]},{"x":-4,"y":6,"color":[230,230,230]},{"x":-2,"y":7,"color":[230,230,230]},{"x":-3,"y":7,"color":[230,230,230]},{"x":-2,"y":6,"color":[230,230,230]},{"x":5,"y":4,"color":[230,230,230]},{"x":4,"y":4,"color":[230,230,230]},{"x":3,"y":4,"color":[230,230,230]},{"x":-3,"y":1,"color":[230,230,230]},{"x":-3,"y":0,"color":[230,230,230]},{"x":-3,"y":-1,"color":[230,230,230]},{"x":-3,"y":-2,"color":[230,230,230]},{"x":-4,"y":-2,"color":[230,230,230]},{"x":-5,"y":-2,"color":[230,230,230]},{"x":-6,"y":-2,"color":[230,230,230]},{"x":-7,"y":-2,"color":[230,230,230]},{"x":1,"y":0,"color":[230,230,230]},{"x":3,"y":0,"color":[230,230,230]},{"x":2,"y":-1,"color":[230,230,230]},{"x":2,"y":-2,"color":[230,230,230]},{"x":2,"y":0,"color":[230,230,230]},{"x":4,"y":0,"color":[230,230,230]},{"x":5,"y":0,"color":[230,230,230]},{"x":5,"y":1,"color":[230,230,230]},{"x":6,"y":2,"color":[230,230,230]},{"x":5,"y":2,"color":[230,230,230]},{"x":6,"y":1,"color":[230,230,230]},{"x":6,"y":0,"color":[230,230,230]},{"x":7,"y":0,"color":[230,230,230]},{"x":7,"y":1,"color":[230,230,230]},{"x":7,"y":2,"color":[230,230,230]},{"x":5,"y":6,"color":[230,230,230]},{"x":5,"y":5,"color":[230,230,230]},{"x":6,"y":6,"color":[230,230,230]},{"x":7,"y":6,"color":[230,230,230]},{"x":5,"y":7,"color":[230,230,230]},{"x":6,"y":8,"color":[230,230,230]},{"x":7,"y":7,"color":[230,230,230]},{"x":6,"y":7,"color":[230,230,230]},{"x":7,"y":8,"color":[230,230,230]},{"x":5,"y":8,"color":[230,230,230]},{"x":2,"y":-3,"color":[230,230,230]},{"x":3,"y":-3,"color":[230,230,230]},{"x":4,"y":-3,"color":[230,230,230]},{"x":4,"y":-4,"color":[230,230,230]},{"x":4,"y":-5,"color":[230,230,230]},{"x":3,"y":-5,"color":[230,230,230]},{"x":2,"y":-5,"color":[230,230,230]},{"x":2,"y":-4,"color":[230,230,230]},{"x":3,"y":-4,"color":[230,230,230]},{"x":-4,"y":-3,"color":[230,230,230]},{"x":-4,"y":-4,"color":[230,230,230]},{"x":-4,"y":-6,"color":[230,230,230]},{"x":-4,"y":-5,"color":[230,230,230]},{"x":-3,"y":-6,"color":[230,230,230]},{"x":-2,"y":-6,"color":[230,230,230]},{"x":-2,"y":-7,"color":[230,230,230]},{"x":-2,"y":-8,"color":[230,230,230]},{"x":-1,"y":-8,"color":[230,230,230]},{"x":0,"y":-8,"color":[230,230,230]},{"x":0,"y":-7,"color":[230,230,230]},{"x":0,"y":-6,"color":[230,230,230]},{"x":-1,"y":-6,"color":[230,230,230]},{"x":-1,"y":-7,"color":[230,230,230]},{"x":-1,"y":-2,"color":[230,230,230]},{"x":-1,"y":-3,"color":[230,230,230]},{"x":-7,"y":-1,"color":[230,230,230]},{"x":-7,"y":0,"color":[230,230,230]},{"x":-7,"y":1,"color":[230,230,230]},{"x":-8,"y":1,"color":[230,230,230]},{"x":-9,"y":0,"color":[230,230,230]},{"x":-9,"y":1,"color":[230,230,230]},{"x":-8,"y":0,"color":[230,230,230]},{"x":-9,"y":2,"color":[230,230,230]},{"x":-8,"y":2,"color":[230,230,230]},{"x":-7,"y":2,"color":[230,230,230]},{"x":-8,"y":-2,"color":[230,230,230]},{"x":-8,"y":-3,"color":[230,230,230]},{"x":-8,"y":-4,"color":[230,230,230]},{"x":-8,"y":-5,"color":[230,230,230]},{"x":-7,"y":-5,"color":[230,230,230]},{"x":-7,"y":-6,"color":[230,230,230]},{"x":-7,"y":-7,"color":[230,230,230]},{"x":-8,"y":-7,"color":[230,230,230]},{"x":-9,"y":-7,"color":[230,230,230]},{"x":-5,"y":4,"color":[230,230,230]},{"x":-6,"y":4,"color":[230,230,230]},{"x":-6,"y":5,"color":[230,230,230]},{"x":-7,"y":5,"color":[230,230,230]},{"x":-8,"y":5,"color":[230,230,230]},{"x":-8,"y":6,"color":[230,230,230]},{"x":-8,"y":7,"color":[230,230,230]},{"x":-8,"y":8,"color":[230,230,230]},{"x":-4,"y":8,"color":[230,230,230]},{"x":-3,"y":8,"color":[230,230,230]},{"x":-2,"y":8,"color":[230,230,230]},{"x":-3,"y":-4,"color":[230,230,230]},{"x":-2,"y":-4,"color":[230,230,230]},{"x":-1,"y":-4,"color":[230,230,230]}]}');
 			document.getElementById('welcomeDialog')!.style.display = 'none';
@@ -240,11 +243,14 @@ class SquaresSimulator {
 
 		// open the welcome dialog
 		const dialogs = document.getElementById('welcomeDialog');
-		dialogs!.style.display = 'block';
+		//dialogs!.style.display = 'block';
 	}
 
 	setup() {
-		this.app.stage.addChild(this.world.viewport);
+		let control = new PIXI3D.CameraOrbitControl(this.app.view);
+		control.distance = 25;
+		control.target = { x: 0, y: 0, z: 0 };
+		this.app.stage.addChild(this.world.pixi);
 
 		this.topBar.rebuildPixi();
 		this.app.stage.addChild(this.topBar.getPixi());
@@ -256,7 +262,7 @@ class SquaresSimulator {
 		this.app.stage.addChild(this.statusBar.getPixi());
 
 		// click handler
-		this.world.pixi.interactive = true;
+		/*this.world.pixi.interactive = true;
 		this.world.pixi.hitArea = new PIXI.Rectangle(-100000, -100000, 200000, 200000);  // TODO should be infinite ...
 		this.world.pixi.on('click', this.worldClickHandler.bind(this));
 		this.world.pixi.on('tap', this.worldClickHandler.bind(this));
@@ -286,7 +292,7 @@ class SquaresSimulator {
 			if (event.key === "Control") {
 				this.ctrlHeld = false;
 			}
-		});
+		});*/
 
 		this.update();
 	}
@@ -393,18 +399,6 @@ class SquaresSimulator {
 			}
 		}
 
-		this.world.pixi.x = window.innerWidth / 2;
-		this.world.pixi.y = window.innerHeight / 2;
-		this.world.backgroundPixi.x = window.innerWidth / 2;
-		this.world.backgroundPixi.y = window.innerHeight / 2;
-		this.world.foregroundPixi.x = window.innerWidth / 2;
-		this.world.foregroundPixi.y = window.innerHeight / 2;
-		this.world.foregroundPixi.filters = [new PIXI.filters.AlphaFilter(Math.sin(this.uiTime / 10) * 0.2 + 0.8)];
-		this.world.gridPixi.x = window.innerWidth / 2;
-		this.world.gridPixi.y = window.innerHeight / 2;
-		this.world.treePixi.x = window.innerWidth / 2;
-		this.world.treePixi.y = window.innerHeight / 2;
-
 		this.topBar.setPosition(
 			this.app.renderer.width / 2 - this.topBar.getWidth() / 2,
 			0);
@@ -424,8 +418,8 @@ class SquaresSimulator {
 		this.world.updatePositions(this.time, this.timeStep);
 	}
 
-	worldClickHandler(e: PIXI.interaction.InteractionEvent): void {
-		const p = e.data.getLocalPosition(this.world.pixi);
+	worldClickHandler(e: PIXI.InteractionEvent): void {
+		/*const p = e.data.getLocalPosition(this.world.pixi);
 		let x = p.x / 80;
 		let y = -p.y / 80;
 
@@ -448,11 +442,11 @@ class SquaresSimulator {
 					}
 				}
 			}
-		}
+		}*/
 	}
 
-	worldPressHandler(e: PIXI.interaction.InteractionEvent): void {
-		this.dragging = true;
+	worldPressHandler(e: PIXI.InteractionEvent): void {
+		/*this.dragging = true;
 
 		const p = e.data.getLocalPosition(this.world.pixi);
 		let x = p.x / 80;
@@ -465,16 +459,16 @@ class SquaresSimulator {
 				const square = this.world.getSquare([x, y]);
 				this.addingSquares = square === null;
 			}
-		}
+		}*/
 	}
 
-	worldReleaseHandler(e: PIXI.interaction.InteractionEvent): void {
-		this.worldMoveHandler(e);
-		this.dragging = false;
+	worldReleaseHandler(e: PIXI.InteractionEvent): void {
+		/*this.worldMoveHandler(e);
+		this.dragging = false;*/
 	}
 
-	worldMoveHandler(e: PIXI.interaction.InteractionEvent): void {
-		if (!this.dragging) {
+	worldMoveHandler(e: PIXI.InteractionEvent): void {
+		/*if (!this.dragging) {
 			return;
 		}
 		const p = e.data.getLocalPosition(this.world.pixi);
@@ -501,7 +495,7 @@ class SquaresSimulator {
 					}
 				}
 			}
-		}
+		}*/
 	}
 
 	createAlgorithm(): Generator<Move> {
@@ -580,7 +574,7 @@ class SquaresSimulator {
 
 	panMode(): void {
 		this.editMode = EditMode.PAN;
-		this.world.viewport.plugins.resume('drag');
+		//this.world.viewport.plugins.resume('drag');
 		this.panButton.setPressed(true);
 		this.selectButton.setPressed(false);
 		this.addSquareButton.setPressed(false);
@@ -588,7 +582,7 @@ class SquaresSimulator {
 
 	selectMode(): void {
 		this.editMode = EditMode.SELECT;
-		this.world.viewport.plugins.pause('drag');
+		//this.world.viewport.plugins.pause('drag');
 		this.panButton.setPressed(false);
 		this.selectButton.setPressed(true);
 		this.addSquareButton.setPressed(false);
@@ -596,7 +590,7 @@ class SquaresSimulator {
 
 	addSquaresMode(): void {
 		this.editMode = EditMode.ADD_SQUARE;
-		this.world.viewport.plugins.pause('drag');
+		//this.world.viewport.plugins.pause('drag');
 		this.panButton.setPressed(false);
 		this.selectButton.setPressed(false);
 		this.addSquareButton.setPressed(true);
@@ -617,7 +611,7 @@ class SquaresSimulator {
 	}
 
 	load(data: string): void {
-		const newWorld = new World();
+		const newWorld = new World(this.app);
 		try {
 			newWorld.deserialize(data);
 		} catch (e) {
@@ -734,5 +728,4 @@ class Constants {
 	});
 }
 
-export { SquaresSimulator, Constants };
-
+export { CubeSlider, Constants };

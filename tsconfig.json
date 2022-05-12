@@ -1,11 +1,17 @@
 {
 	"compilerOptions": {
+		"esModuleInterop": true,
 		"module": "es6",
 		"moduleResolution": "node",
 		"outDir": "./dist/",
 		"sourceMap": true,
 		"strict": true,
-		"target": "es2015"
+		"target": "es2015",
+		"paths": {
+			"mini-signals": [
+				"node_modules/resource-loader/typings/mini-signals.d.ts"
+			]
+		},
+		"baseUrl": "./",
 	}
 }
-

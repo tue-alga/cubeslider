@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js'
 
-import { SquaresSimulator } from './squares-simulator'
+import { CubeSlider } from './cube-slider'
 import { PhaseLabel } from './ui';
 
 const container = document.getElementById('squares-simulator-container')!;
@@ -33,8 +33,21 @@ PIXI.Loader.shared.add([
 	'icons/slower.png',
 	'icons/faster.png',
 	'icons/show-connectivity.png'
-]).load(() => {
-	let simulator = new SquaresSimulator(app);
+])
+PIXI.Loader.shared.add(
+	"diffuse.cubemap",
+	"https://raw.githubusercontent.com/jnsmalm/pixi3d-examples/master/assets/chromatic/diffuse.cubemap"
+);
+PIXI.Loader.shared.add(
+	"specular.cubemap",
+	"https://raw.githubusercontent.com/jnsmalm/pixi3d-examples/master/assets/chromatic/specular.cubemap"
+);
+PIXI.Loader.shared.add(
+	"cube.gltf",
+	'res/cube.gltf'
+);
+PIXI.Loader.shared.load(() => {
+	let simulator = new CubeSlider(app);
 });
 
 declare global {

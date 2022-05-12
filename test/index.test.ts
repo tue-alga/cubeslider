@@ -14,4 +14,3 @@ describe("Direction", function () {
             .to.equal(Direction.DOWN);*/
     });
 });
-

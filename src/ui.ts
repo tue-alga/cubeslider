@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js';
 import { Color } from './square';
-import { Constants } from './squares-simulator';
+import { Constants } from './cube-slider';
 
 abstract class Component {
 	protected readonly pixi = new PIXI.Container();

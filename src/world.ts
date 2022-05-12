@@ -1,4 +1,5 @@
 import * as PIXI from 'pixi.js';
+import * as PIXI3D from 'pixi3d';
 import { Viewport } from 'pixi-viewport';
 
 import { Color, ComponentStatus, Square } from './square';
@@ -161,98 +162,48 @@ class Move {
 class World {
 
 	world: WorldCell[][] = [];
-
-	viewport = new Viewport();
-
-	pixi = new PIXI.Container();
-	backgroundPixi = new PIXI.Container();
-	foregroundPixi = new PIXI.Container();
-	gridPixi = new PIXI.Container();
-	treePixi = new PIXI.Graphics();
-	grid: PIXI.Mesh;
-
+	pixi = new PIXI3D.Container3D();
 	squares: Square[] = [];
-
 	currentMove: Move | null = null;
-
 	showComponentMarks = false;
+
+	ground: PIXI3D.Mesh3D;
+	shadowLight: PIXI3D.ShadowCastingLight;
+
+	pipeline: PIXI3D.StandardPipeline;
 
 	/**
 	 * Creates the world and initializes its PIXI elements (viewport and grid).
 	 */
-	constructor() {
-		const container = document.getElementById('squares-simulator-container')!;
+	constructor(app: PIXI.Application) {
+		const renderer = app.renderer as PIXI.Renderer;
 
-		this.viewport = new Viewport({
-			'divWheel': container
+		// @ts-ignore
+		let ibl = new PIXI3D.ImageBasedLighting(PIXI.Loader.shared.resources['diffuse.cubemap'].cubemap, PIXI.Loader.shared.resources['specular.cubemap'].cubemap);
+
+		PIXI3D.LightingEnvironment.main = new PIXI3D.LightingEnvironment(renderer, ibl);
+
+		let dirLight = new PIXI3D.Light();
+		dirLight.type = PIXI3D.LightType.directional;
+		dirLight.intensity = 1;
+		dirLight.position.set(0, 0, 0);
+		dirLight.rotationQuaternion.setEulerAngles(70, 70, 0);
+		PIXI3D.LightingEnvironment.main.lights.push(dirLight);
+
+		this.shadowLight = new PIXI3D.ShadowCastingLight(renderer, dirLight, {
+			'shadowTextureSize': 2048,
+			'quality': PIXI3D.ShadowQuality.high
 		});
-		this.viewport.addChild(this.gridPixi);
-		this.viewport.addChild(this.backgroundPixi);
+		this.shadowLight.softness = 10;
+		this.shadowLight.shadowArea = 50;
 
-		this.backgroundPixi.filters = [new PIXI.filters.AlphaFilter(0.3)];
-		this.viewport.addChild(this.pixi);
+		this.ground = this.pixi.addChild(PIXI3D.Mesh3D.createPlane());
+		this.ground.position.y = -0.5;
+		this.ground.scale.set(20);
+		//this.ground.material = material;
 
-		this.viewport.addChild(this.foregroundPixi);
-
-		this.treePixi.visible = false;
-		this.viewport.addChild(this.treePixi);
-
-		this.viewport.drag();
-		this.viewport.pinch();
-		this.viewport.wheel();
-		this.viewport.clampZoom({
-			"minScale": 0.1,
-			"maxScale": 2,
-		});
-		this.viewport.zoomPercent(-0.5, true);
-
-		const gridLineShader = `
-		uniform mat3 projectionMatrix;
-		`;
-
-		const gridGeometry = new PIXI.Geometry().addAttribute('aVertexPosition',
-			[
-				-1e6, -1e6, 1e6, -1e6, 1e6, 1e6,
-				1e6, 1e6, -1e6, 1e6, -1e6, -1e6
-			]);
-		const gridShader = PIXI.Shader.from(`
-			precision mediump float;
-			attribute vec2 aVertexPosition;
-
-			uniform mat3 translationMatrix;
-			uniform mat3 projectionMatrix;
-
-			varying vec2 uv;
-
-			void main() {
-				gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0);
-				uv = aVertexPosition;
-			}`,
-			`precision mediump float;
-
-			uniform mat3 translationMatrix;
-
-			varying vec2 uv;
-
-			float gridValue(float coord, float lineWidth) {
-				return clamp(-abs(mod(coord - 0.0, 160.0) - 80.0) + lineWidth, 0.0, 1.0);
-			}
-
-			void main() {
-				float zoom = translationMatrix[1][1];
-				float width = 3.0 / sqrt(zoom);
-				float base = clamp(1.1 - zoom, 0.9, 1.0);
-				if ((uv.x > -50.0 && uv.x < -30.0) || (uv.y > 30.0 && uv.y < 50.0)) {
-					base *= 0.6;
-				}
-				float xMod = gridValue(uv.x * 2.0, width);
-				float yMod = gridValue(uv.y * 2.0, width);
-				float gray = base + (1.0 - max(xMod, yMod)) * (1.0 - base);
-				gl_FragColor = vec4(gray, gray, gray, 1.0);
-			}
-			`);
-		this.grid = new PIXI.Mesh(gridGeometry, gridShader);
-		this.gridPixi.addChild(this.grid);
+		this.pipeline = renderer.plugins.pipeline;
+		this.pipeline.enableShadows(this.ground, this.shadowLight);
 	}
 
 	private getColumn(x: number): WorldCell[] {
@@ -317,8 +268,7 @@ class World {
 		this.getCell(square.p).squareId = this.squares.length;
 		this.squares.push(square);
 		this.pixi.addChild(square.pixi);
-		this.backgroundPixi.addChild(square.backgroundPixi);
-		this.foregroundPixi.addChild(square.foregroundPixi);
+		this.pipeline.enableShadows(square.mesh);
 	}
 
 	/**
@@ -360,8 +310,6 @@ class World {
 	removeSquareUnmarked(square: Square): void {
 		this.getCell(square.p).squareId = null;
 		this.pixi.removeChild(square.pixi);
-		this.backgroundPixi.removeChild(square.backgroundPixi);
-		this.foregroundPixi.removeChild(square.foregroundPixi);
 		this.squares = this.squares.filter((b) => b !== square);
 		// because removing the square from this.squares changes the indices, we
 		// need to update the squareIds as well

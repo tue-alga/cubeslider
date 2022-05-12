@@ -1,4 +1,5 @@
 import * as PIXI from 'pixi.js';
+import * as PIXI3D from 'pixi3d';
 
 import { World, Move } from './world';
 
@@ -38,7 +39,8 @@ class Square {
 	componentStatus: ComponentStatus;
 	chunkId: number;
 	onBoundary: boolean = false;
-	pixi = new PIXI.Container();
+	pixi = new PIXI3D.Container3D();
+	mesh: PIXI3D.Mesh3D;
 	selectionCircle = new PIXI.Graphics();
 	circle = new PIXI.Graphics();
 	componentMark = new PIXI.Graphics();
@@ -54,16 +56,51 @@ class Square {
 		this.componentStatus = ComponentStatus.NONE;
 		this.chunkId = -1;
 
-		this.foregroundPixi.addChild(this.selectionCircle);
+		// @ts-ignore
+		let material = new PIXI3D.StandardMaterial();
+		material.baseColor = new PIXI3D.Color(1, 1, 1);
+		material.exposure = 1.5;
+		material.metallic = 0.3;
+		material.roughness = 0.5;
+		material.shadowCastingLight = world.shadowLight;
+
+		// @ts-ignore
+		this.mesh = PIXI3D.Model.from(PIXI.Loader.shared.resources["cube.gltf"]['gltf']).meshes[0];
+		this.mesh.material = material;
+		this.mesh.position.set(0, 0, 0);
+		this.pixi.addChild(this.mesh);
+
+		/*this.foregroundPixi.addChild(this.selectionCircle);
 		this.pixi.addChild(this.circle);
-		this.pixi.addChild(this.componentMark);
+		this.pixi.addChild(this.componentMark);*/
 		this.updatePixi();
 
 		this.updatePosition(0, 0);
 	}
 
 	updatePixi(): void {
-		this.selectionCircle.clear();
+		if (!this.world.showComponentMarks) {
+			(this.mesh.material! as PIXI3D.StandardMaterial).baseColor = new PIXI3D.Color(1, 1, 1);
+		} else {
+			switch (this.componentStatus) {
+				case ComponentStatus.CONNECTOR:
+					(this.mesh.material! as PIXI3D.StandardMaterial).baseColor = new PIXI3D.Color(0.45, 0.65, 0.925);
+					break;
+				case ComponentStatus.CHUNK_STABLE:
+					(this.mesh.material! as PIXI3D.StandardMaterial).baseColor = new PIXI3D.Color(0.3, 0.5, 0.9);
+					break;
+				case ComponentStatus.CHUNK_CUT:
+					(this.mesh.material! as PIXI3D.StandardMaterial).baseColor = new PIXI3D.Color(0.6, 0.8, 0.95);
+					break;
+				case ComponentStatus.LINK_STABLE:
+					(this.mesh.material! as PIXI3D.StandardMaterial).baseColor = new PIXI3D.Color(0.9, 0.5, 0.3);
+					break;
+				case ComponentStatus.LINK_CUT:
+					(this.mesh.material! as PIXI3D.StandardMaterial).baseColor = new PIXI3D.Color(0.95, 0.8, 0.6);
+					break;
+			}
+		}
+		/*this.selectionCircle.clear();
 		this.selectionCircle.lineStyle(15, 0x2277dd);
 		this.selectionCircle.moveTo(-40, -40);
 		this.selectionCircle.lineTo(40, -40);
@@ -135,7 +172,7 @@ class Square {
 		this.backgroundPixi.lineTo(-40, 40);
 		this.backgroundPixi.lineTo(-40, -40);
 		this.backgroundPixi.closePath();
-		this.backgroundPixi.endFill();
+		this.backgroundPixi.endFill();*/
 	}
 
 	updatePosition(time: number, timeStep: number, move?: Move): void {
@@ -144,18 +181,8 @@ class Square {
 			[x, y] = move.interpolate(time - timeStep + 1);
 		}
 
-		this.circle.x = x * 80;
-		this.circle.y = -y * 80;
-
-		this.selectionCircle.visible = this.selected;
-		this.selectionCircle.x = this.circle.x;
-		this.selectionCircle.y = this.circle.y;
-
-		this.componentMark.x = this.circle.x;
-		this.componentMark.y = this.circle.y;
-
-		this.backgroundPixi.x = this.circle.x;
-		this.backgroundPixi.y = this.circle.y;
+		this.pixi.x = x;
+		this.pixi.z = -y;
 	}
 
 	setColor(color: Color): void {
