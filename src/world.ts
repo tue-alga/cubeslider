@@ -191,11 +191,14 @@ class World {
 	currentMove: Move | null = null;
 	showComponentMarks = false;
 
-	ground: PIXI3D.Mesh3D;
+	ground: PIXI3D.Mesh3D[][] = [];
 	shadowLight: PIXI3D.ShadowCastingLight;
 	phantomCube: PIXI3D.Mesh3D;
 
 	pipeline: PIXI3D.StandardPipeline;
+
+	addingCubes = false;
+	removingCubes = false;
 
 	/**
 	 * Creates the world and initializes its PIXI elements (viewport and grid).
@@ -221,14 +224,49 @@ class World {
 		});
 		this.shadowLight.softness = 10;
 		this.shadowLight.shadowArea = 50;
-
-		this.ground = this.pixi.addChild(PIXI3D.Mesh3D.createPlane());
-		this.ground.position.y = -0.5;
-		this.ground.scale.set(20);
-		//this.ground.material = material;
-
 		this.pipeline = renderer.plugins.pipeline;
-		this.pipeline.enableShadows(this.ground, this.shadowLight);
+
+		let darkGroundMaterial = new PIXI3D.StandardMaterial();
+		darkGroundMaterial.baseColor = new PIXI3D.Color(0.9, 0.9, 0.9);
+		darkGroundMaterial.exposure = 1.5;
+		let lightGroundMaterial = new PIXI3D.StandardMaterial();
+		lightGroundMaterial.baseColor = new PIXI3D.Color(1, 1, 1);
+		lightGroundMaterial.exposure = 1.5;
+		for (let x = -10; x < 10; x++) {
+			let row: PIXI3D.Mesh3D[] = [];
+			for (let y = -10; y < 10; y++) {
+				let tile = this.pixi.addChild(PIXI3D.Mesh3D.createPlane());
+				tile.position.x = x;
+				tile.position.z = -y;
+				tile.position.y = -0.5;
+				tile.scale.set(0.5);
+				row.push(tile);
+				if ((x + y) % 2 == 0) {
+					tile.material = darkGroundMaterial;
+				} else {
+					tile.material = lightGroundMaterial;
+				}
+				tile.interactive = true;
+				tile.hitArea = new PIXI3D.PickingHitArea(undefined, tile);
+				let newCubePosition: Position = [x, y, 0];
+				tile.on("pointerover", () => {
+					if (this.addingCubes && !this.hasSquare(newCubePosition)) {
+						this.showPhantomCube(newCubePosition);
+					}
+				});
+				tile.on("pointerout", () => {
+					this.hidePhantomCube();
+				});
+				tile.on("pointerdown", () => {
+					if (this.addingCubes && !this.hasSquare(newCubePosition)) {
+						this.hidePhantomCube();
+						this.addSquare(new Square(this, newCubePosition, Color.GRAY));
+					}
+				});
+				this.pipeline.enableShadows(tile, this.shadowLight);
+			}
+			this.ground.push(row);
+		}
 
 		// phantom cube for showing where a new cube will be added
 		let material = new PIXI3D.StandardMaterial();
@@ -723,7 +761,7 @@ class World {
 			throw new Error('Save file with incorrect version');
 		}
 
-		let squares: any[] = obj[version === 1 ? 'cubes' : 'squares'];
+		let squares: any[] = obj['squares'];
 		squares.forEach((square: any) => {
 			let color = Color.BLUE;
 			if (square.hasOwnProperty('color')) {

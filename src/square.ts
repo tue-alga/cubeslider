@@ -94,7 +94,7 @@ class Square {
 		let newCubePosition: Position = [
 			this.p[0] + p[0], this.p[1] + p[1], this.p[2] + p[2]];
 		shield.on("pointerover", () => {
-			if (!this.world.hasSquare(newCubePosition)) {
+			if (this.world.addingCubes && !this.world.hasSquare(newCubePosition)) {
 				this.world.showPhantomCube(newCubePosition);
 			}
 		});
@@ -102,9 +102,12 @@ class Square {
 			this.world.hidePhantomCube();
 		});
 		shield.on("pointerdown", () => {
-			if (!this.world.hasSquare(newCubePosition)) {
+			if (this.world.addingCubes && !this.world.hasSquare(newCubePosition)) {
 				this.world.hidePhantomCube();
 				this.world.addSquare(new Square(this.world, newCubePosition, this.color));
+			}
+			if (this.world.removingCubes) {
+				this.world.removeSquare(this);
 			}
 		});
 	}

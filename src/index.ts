@@ -26,6 +26,7 @@ PIXI.Loader.shared.add([
 	'icons/pan.png',
 	'icons/select.png',
 	'icons/add-square.png',
+	'icons/remove-square.png',
 	'icons/color.png',
 	'icons/delete.png',
 	'icons/save.png',

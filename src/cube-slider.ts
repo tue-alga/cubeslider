@@ -14,7 +14,7 @@ import { CanonicalizeAlgorithm } from './algorithms/canonicalize';
 import { CustomAlgorithm } from './algorithms/custom';*/
 
 enum EditMode {
-	PAN, SELECT, ADD_SQUARE
+	PAN, SELECT, ADD_SQUARE, REMOVE_SQUARE
 }
 
 enum SimulationMode {
@@ -45,6 +45,7 @@ class CubeSlider {
 	timeStep: number = 0;
 	runUntil: number = Infinity;
 	uiTime: number = 0;
+	control: PIXI3D.CameraOrbitControl;
 
 	simulationMode: SimulationMode = SimulationMode.RESET;
 	timeSpeed: number = 0.1;
@@ -75,6 +76,7 @@ class CubeSlider {
 	private panButton: IconButton;
 	private selectButton: IconButton;
 	private addSquareButton: IconButton;
+	private removeSquareButton: IconButton;
 	private colorButton: IconColorButton;
 	private deleteButton: IconButton;
 	private saveButton: IconButton;
@@ -139,12 +141,17 @@ class CubeSlider {
 		this.selectButton = new IconButton(
 			"select", "Select objects", true, "S");
 		this.selectButton.onClick(this.selectMode.bind(this));
-		this.bottomBar.addChild(this.selectButton);
+		//this.bottomBar.addChild(this.selectButton);
 
 		this.addSquareButton = new IconButton(
-			"add-square", "Add/remove squares", true, "C");
+			"add-square", "Add squares", true, "C");
 		this.addSquareButton.onClick(this.addSquaresMode.bind(this));
 		this.bottomBar.addChild(this.addSquareButton);
+
+		this.removeSquareButton = new IconButton(
+			"remove-square", "Remove squares", true, "C");
+		this.removeSquareButton.onClick(this.removeSquaresMode.bind(this));
+		this.bottomBar.addChild(this.removeSquareButton);
 
 		this.bottomBar.addChild(new Separator());
 
@@ -222,8 +229,6 @@ class CubeSlider {
 		});
 
 		const welcomeLoadButton = document.getElementById('welcome-load-button');
-		// TODO temporary hack
-		this.world.addSquare(new Square(this.world, [0, 0, 0], this.lastColor));
 		welcomeLoadButton!.addEventListener('click', () => {
 			//this.load('{"_version":2,"squares":[{"x":0,"y":0,"color":[230,230,230]},{"x":0,"y":1,"color":[230,230,230]},{"x":0,"y":2,"color":[230,230,230]},{"x":0,"y":3,"color":[230,230,230]},{"x":2,"y":3,"color":[230,230,230]},{"x":1,"y":3,"color":[230,230,230]},{"x":2,"y":5,"color":[230,230,230]},{"x":2,"y":4,"color":[230,230,230]},{"x":1,"y":6,"color":[230,230,230]},{"x":2,"y":6,"color":[230,230,230]},{"x":2,"y":7,"color":[230,230,230]},{"x":2,"y":8,"color":[230,230,230]},{"x":1,"y":8,"color":[230,230,230]},{"x":0,"y":8,"color":[230,230,230]},{"x":0,"y":7,"color":[230,230,230]},{"x":0,"y":6,"color":[230,230,230]},{"x":1,"y":7,"color":[230,230,230]},{"x":-1,"y":2,"color":[230,230,230]},{"x":-2,"y":2,"color":[230,230,230]},{"x":-3,"y":2,"color":[230,230,230]},{"x":-4,"y":2,"color":[230,230,230]},{"x":-4,"y":3,"color":[230,230,230]},{"x":-4,"y":4,"color":[230,230,230]},{"x":-4,"y":5,"color":[230,230,230]},{"x":-3,"y":6,"color":[230,230,230]},{"x":-4,"y":7,"color":[230,230,230]},{"x":-4,"y":6,"color":[230,230,230]},{"x":-2,"y":7,"color":[230,230,230]},{"x":-3,"y":7,"color":[230,230,230]},{"x":-2,"y":6,"color":[230,230,230]},{"x":5,"y":4,"color":[230,230,230]},{"x":4,"y":4,"color":[230,230,230]},{"x":3,"y":4,"color":[230,230,230]},{"x":-3,"y":1,"color":[230,230,230]},{"x":-3,"y":0,"color":[230,230,230]},{"x":-3,"y":-1,"color":[230,230,230]},{"x":-3,"y":-2,"color":[230,230,230]},{"x":-4,"y":-2,"color":[230,230,230]},{"x":-5,"y":-2,"color":[230,230,230]},{"x":-6,"y":-2,"color":[230,230,230]},{"x":-7,"y":-2,"color":[230,230,230]},{"x":1,"y":0,"color":[230,230,230]},{"x":3,"y":0,"color":[230,230,230]},{"x":2,"y":-1,"color":[230,230,230]},{"x":2,"y":-2,"color":[230,230,230]},{"x":2,"y":0,"color":[230,230,230]},{"x":4,"y":0,"color":[230,230,230]},{"x":5,"y":0,"color":[230,230,230]},{"x":5,"y":1,"color":[230,230,230]},{"x":6,"y":2,"color":[230,230,230]},{"x":5,"y":2,"color":[230,230,230]},{"x":6,"y":1,"color":[230,230,230]},{"x":6,"y":0,"color":[230,230,230]},{"x":7,"y":0,"color":[230,230,230]},{"x":7,"y":1,"color":[230,230,230]},{"x":7,"y":2,"color":[230,230,230]},{"x":5,"y":6,"color":[230,230,230]},{"x":5,"y":5,"color":[230,230,230]},{"x":6,"y":6,"color":[230,230,230]},{"x":7,"y":6,"color":[230,230,230]},{"x":5,"y":7,"color":[230,230,230]},{"x":6,"y":8,"color":[230,230,230]},{"x":7,"y":7,"color":[230,230,230]},{"x":6,"y":7,"color":[230,230,230]},{"x":7,"y":8,"color":[230,230,230]},{"x":5,"y":8,"color":[230,230,230]},{"x":2,"y":-3,"color":[230,230,230]},{"x":3,"y":-3,"color":[230,230,230]},{"x":4,"y":-3,"color":[230,230,230]},{"x":4,"y":-4,"color":[230,230,230]},{"x":4,"y":-5,"color":[230,230,230]},{"x":3,"y":-5,"color":[230,230,230]},{"x":2,"y":-5,"color":[230,230,230]},{"x":2,"y":-4,"color":[230,230,230]},{"x":3,"y":-4,"color":[230,230,230]},{"x":-4,"y":-3,"color":[230,230,230]},{"x":-4,"y":-4,"color":[230,230,230]},{"x":-4,"y":-6,"color":[230,230,230]},{"x":-4,"y":-5,"color":[230,230,230]},{"x":-3,"y":-6,"color":[230,230,230]},{"x":-2,"y":-6,"color":[230,230,230]},{"x":-2,"y":-7,"color":[230,230,230]},{"x":-2,"y":-8,"color":[230,230,230]},{"x":-1,"y":-8,"color":[230,230,230]},{"x":0,"y":-8,"color":[230,230,230]},{"x":0,"y":-7,"color":[230,230,230]},{"x":0,"y":-6,"color":[230,230,230]},{"x":-1,"y":-6,"color":[230,230,230]},{"x":-1,"y":-7,"color":[230,230,230]},{"x":-1,"y":-2,"color":[230,230,230]},{"x":-1,"y":-3,"color":[230,230,230]},{"x":-7,"y":-1,"color":[230,230,230]},{"x":-7,"y":0,"color":[230,230,230]},{"x":-7,"y":1,"color":[230,230,230]},{"x":-8,"y":1,"color":[230,230,230]},{"x":-9,"y":0,"color":[230,230,230]},{"x":-9,"y":1,"color":[230,230,230]},{"x":-8,"y":0,"color":[230,230,230]},{"x":-9,"y":2,"color":[230,230,230]},{"x":-8,"y":2,"color":[230,230,230]},{"x":-7,"y":2,"color":[230,230,230]},{"x":-8,"y":-2,"color":[230,230,230]},{"x":-8,"y":-3,"color":[230,230,230]},{"x":-8,"y":-4,"color":[230,230,230]},{"x":-8,"y":-5,"color":[230,230,230]},{"x":-7,"y":-5,"color":[230,230,230]},{"x":-7,"y":-6,"color":[230,230,230]},{"x":-7,"y":-7,"color":[230,230,230]},{"x":-8,"y":-7,"color":[230,230,230]},{"x":-9,"y":-7,"color":[230,230,230]},{"x":-5,"y":4,"color":[230,230,230]},{"x":-6,"y":4,"color":[230,230,230]},{"x":-6,"y":5,"color":[230,230,230]},{"x":-7,"y":5,"color":[230,230,230]},{"x":-8,"y":5,"color":[230,230,230]},{"x":-8,"y":6,"color":[230,230,230]},{"x":-8,"y":7,"color":[230,230,230]},{"x":-8,"y":8,"color":[230,230,230]},{"x":-4,"y":8,"color":[230,230,230]},{"x":-3,"y":8,"color":[230,230,230]},{"x":-2,"y":8,"color":[230,230,230]},{"x":-3,"y":-4,"color":[230,230,230]},{"x":-2,"y":-4,"color":[230,230,230]},{"x":-1,"y":-4,"color":[230,230,230]}]}');
 			document.getElementById('welcomeDialog')!.style.display = 'none';
@@ -242,6 +247,10 @@ class CubeSlider {
 
 		this.setup();
 
+		this.control = new PIXI3D.CameraOrbitControl(this.app.view);
+		this.control.distance = 25;
+		this.control.target = { x: 0, y: 0, z: 0 };
+
 
 		// open the welcome dialog
 		const dialogs = document.getElementById('welcomeDialog');
@@ -249,9 +258,6 @@ class CubeSlider {
 	}
 
 	setup() {
-		let control = new PIXI3D.CameraOrbitControl(this.app.view);
-		control.distance = 25;
-		control.target = { x: 0, y: 0, z: 0 };
 		this.app.stage.addChild(this.world.pixi);
 
 		this.topBar.rebuildPixi();
@@ -576,26 +582,46 @@ class CubeSlider {
 
 	panMode(): void {
 		this.editMode = EditMode.PAN;
-		//this.world.viewport.plugins.resume('drag');
+		this.control.allowControl = true;
+		this.world.addingCubes = false;
+		this.world.removingCubes = false;
 		this.panButton.setPressed(true);
 		this.selectButton.setPressed(false);
 		this.addSquareButton.setPressed(false);
+		this.removeSquareButton.setPressed(false);
 	}
 
 	selectMode(): void {
 		this.editMode = EditMode.SELECT;
-		//this.world.viewport.plugins.pause('drag');
+		this.control.allowControl = true;
+		this.world.addingCubes = false;
+		this.world.removingCubes = false;
 		this.panButton.setPressed(false);
 		this.selectButton.setPressed(true);
 		this.addSquareButton.setPressed(false);
+		this.removeSquareButton.setPressed(false);
 	}
 
 	addSquaresMode(): void {
 		this.editMode = EditMode.ADD_SQUARE;
-		//this.world.viewport.plugins.pause('drag');
+		this.control.allowControl = false;
+		this.world.addingCubes = true;
+		this.world.removingCubes = false;
 		this.panButton.setPressed(false);
 		this.selectButton.setPressed(false);
 		this.addSquareButton.setPressed(true);
+		this.removeSquareButton.setPressed(false);
+	}
+
+	removeSquaresMode(): void {
+		this.editMode = EditMode.REMOVE_SQUARE;
+		this.control.allowControl = false;
+		this.world.addingCubes = false;
+		this.world.removingCubes = true;
+		this.panButton.setPressed(false);
+		this.selectButton.setPressed(false);
+		this.addSquareButton.setPressed(false);
+		this.removeSquareButton.setPressed(true);
 	}
 
 	delete(): void {
