@@ -2,6 +2,7 @@ import * as PIXI from 'pixi.js';
 import * as PIXI3D from 'pixi3d';
 
 import { World, Move } from './world';
+import {InteractionEvent} from "pixi.js";
 
 type Position = [number, number, number];
 
@@ -94,20 +95,22 @@ class Square {
 		let newCubePosition: Position = [
 			this.p[0] + p[0], this.p[1] + p[1], this.p[2] + p[2]];
 		shield.on("pointerover", () => {
-			if (this.world.addingCubes && !this.world.hasSquare(newCubePosition)) {
+			if (this.world.modifyingCubes && !this.world.hasSquare(newCubePosition)) {
 				this.world.showPhantomCube(newCubePosition);
 			}
 		});
 		shield.on("pointerout", () => {
 			this.world.hidePhantomCube();
 		});
-		shield.on("pointerdown", () => {
-			if (this.world.addingCubes && !this.world.hasSquare(newCubePosition)) {
-				this.world.hidePhantomCube();
-				this.world.addSquare(new Square(this.world, newCubePosition, this.color));
-			}
-			if (this.world.removingCubes) {
-				this.world.removeSquare(this);
+		shield.on("pointerdown", (event: InteractionEvent) => {
+			if (this.world.modifyingCubes) {
+				// primary button (0) adds cubes, secondary button (2) removes cubes 
+				if (event.data.button == 0 && !this.world.hasSquare(newCubePosition)) {
+					this.world.hidePhantomCube();
+					this.world.addSquare(new Square(this.world, newCubePosition, this.color));
+				} else if (event.data.button == 2) {
+					this.world.removeSquare(this);
+				}
 			}
 		});
 	}

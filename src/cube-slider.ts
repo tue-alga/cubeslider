@@ -75,8 +75,7 @@ class CubeSlider {
 
 	private panButton: IconButton;
 	private selectButton: IconButton;
-	private addSquareButton: IconButton;
-	private removeSquareButton: IconButton;
+	private modifySquareButton: IconButton;
 	private colorButton: IconColorButton;
 	private deleteButton: IconButton;
 	private saveButton: IconButton;
@@ -91,6 +90,11 @@ class CubeSlider {
 
 	constructor(app: PIXI.Application) {
 		this.app = app;
+		
+		// disable context menu popup on right click
+		this.app.view.oncontextmenu = () => {
+			return false;
+		};
 
 		this.world = new World(app);
 
@@ -143,15 +147,10 @@ class CubeSlider {
 		this.selectButton.onClick(this.selectMode.bind(this));
 		//this.bottomBar.addChild(this.selectButton);
 
-		this.addSquareButton = new IconButton(
+		this.modifySquareButton = new IconButton(
 			"add-square", "Add squares", true, "C");
-		this.addSquareButton.onClick(this.addSquaresMode.bind(this));
-		this.bottomBar.addChild(this.addSquareButton);
-
-		this.removeSquareButton = new IconButton(
-			"remove-square", "Remove squares", true, "C");
-		this.removeSquareButton.onClick(this.removeSquaresMode.bind(this));
-		this.bottomBar.addChild(this.removeSquareButton);
+		this.modifySquareButton.onClick(this.modifySquaresMode.bind(this));
+		this.bottomBar.addChild(this.modifySquareButton);
 
 		this.bottomBar.addChild(new Separator());
 
@@ -248,8 +247,9 @@ class CubeSlider {
 		this.setup();
 
 		this.control = new PIXI3D.CameraOrbitControl(this.app.view);
-		this.control.distance = 25;
+		this.control.distance = 20;
 		this.control.target = { x: 0, y: 0, z: 0 };
+		this.control.angles.x = 30;
 
 
 		// open the welcome dialog
@@ -535,7 +535,7 @@ class CubeSlider {
 			this.algorithm = this.createAlgorithm();
 			this.deselectAll();
 			this.selectButton.setEnabled(false);
-			this.addSquareButton.setEnabled(false);
+			this.modifySquareButton.setEnabled(false);
 			this.saveButton.setEnabled(false);
 			this.algorithmButton.setEnabled(false);
 		}
@@ -552,7 +552,7 @@ class CubeSlider {
 			this.algorithm = this.createAlgorithm();
 			this.deselectAll();
 			this.selectButton.setEnabled(false);
-			this.addSquareButton.setEnabled(false);
+			this.modifySquareButton.setEnabled(false);
 			this.saveButton.setEnabled(false);
 			this.algorithmButton.setEnabled(false);
 		}
@@ -569,7 +569,7 @@ class CubeSlider {
 		this.resetButton.setEnabled(false);
 
 		this.selectButton.setEnabled(true);
-		this.addSquareButton.setEnabled(true);
+		this.modifySquareButton.setEnabled(true);
 		this.saveButton.setEnabled(true);
 		this.algorithmButton.setEnabled(true);
 
@@ -583,45 +583,28 @@ class CubeSlider {
 	panMode(): void {
 		this.editMode = EditMode.PAN;
 		this.control.allowControl = true;
-		this.world.addingCubes = false;
-		this.world.removingCubes = false;
+		this.world.modifyingCubes = false;
 		this.panButton.setPressed(true);
 		this.selectButton.setPressed(false);
-		this.addSquareButton.setPressed(false);
-		this.removeSquareButton.setPressed(false);
+		this.modifySquareButton.setPressed(false);
 	}
 
 	selectMode(): void {
 		this.editMode = EditMode.SELECT;
 		this.control.allowControl = true;
-		this.world.addingCubes = false;
-		this.world.removingCubes = false;
+		this.world.modifyingCubes = false;
 		this.panButton.setPressed(false);
 		this.selectButton.setPressed(true);
-		this.addSquareButton.setPressed(false);
-		this.removeSquareButton.setPressed(false);
+		this.modifySquareButton.setPressed(false);
 	}
 
-	addSquaresMode(): void {
+	modifySquaresMode(): void {
 		this.editMode = EditMode.ADD_SQUARE;
 		this.control.allowControl = false;
-		this.world.addingCubes = true;
-		this.world.removingCubes = false;
+		this.world.modifyingCubes = true;
 		this.panButton.setPressed(false);
 		this.selectButton.setPressed(false);
-		this.addSquareButton.setPressed(true);
-		this.removeSquareButton.setPressed(false);
-	}
-
-	removeSquaresMode(): void {
-		this.editMode = EditMode.REMOVE_SQUARE;
-		this.control.allowControl = false;
-		this.world.addingCubes = false;
-		this.world.removingCubes = true;
-		this.panButton.setPressed(false);
-		this.selectButton.setPressed(false);
-		this.addSquareButton.setPressed(false);
-		this.removeSquareButton.setPressed(true);
+		this.modifySquareButton.setPressed(true);
 	}
 
 	delete(): void {

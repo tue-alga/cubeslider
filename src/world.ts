@@ -197,8 +197,7 @@ class World {
 
 	pipeline: PIXI3D.StandardPipeline;
 
-	addingCubes = false;
-	removingCubes = false;
+	modifyingCubes = false;
 
 	/**
 	 * Creates the world and initializes its PIXI elements (viewport and grid).
@@ -250,7 +249,7 @@ class World {
 				tile.hitArea = new PIXI3D.PickingHitArea(undefined, tile);
 				let newCubePosition: Position = [x, y, 0];
 				tile.on("pointerover", () => {
-					if (this.addingCubes && !this.hasSquare(newCubePosition)) {
+					if (this.modifyingCubes && !this.hasSquare(newCubePosition)) {
 						this.showPhantomCube(newCubePosition);
 					}
 				});
@@ -258,7 +257,7 @@ class World {
 					this.hidePhantomCube();
 				});
 				tile.on("pointerdown", () => {
-					if (this.addingCubes && !this.hasSquare(newCubePosition)) {
+					if (this.modifyingCubes && !this.hasSquare(newCubePosition)) {
 						this.hidePhantomCube();
 						this.addSquare(new Square(this, newCubePosition, Color.GRAY));
 					}
