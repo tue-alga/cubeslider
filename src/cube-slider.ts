@@ -260,6 +260,10 @@ class CubeSlider {
 				this.control.angles.y -= event.movementX * 0.5;
 			}
 		});
+		this.app.view.addEventListener("wheel", (event) => {
+			this.control.distance += event.deltaY * 0.01;
+			event.preventDefault();
+		});
 
 		
 		// open the welcome dialog
