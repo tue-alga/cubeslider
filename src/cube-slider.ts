@@ -14,7 +14,7 @@ import { CanonicalizeAlgorithm } from './algorithms/canonicalize';
 import { CustomAlgorithm } from './algorithms/custom';*/
 
 enum EditMode {
-	PAN, SELECT, ADD_SQUARE, REMOVE_SQUARE
+	PAN, SELECT, MODIFY_CUBES, REMOVE_SQUARE
 }
 
 enum SimulationMode {
@@ -37,7 +37,7 @@ class CubeSlider {
 
 	private app: PIXI.Application;
 
-	editMode: EditMode = EditMode.PAN;
+	editMode: EditMode = EditMode.MODIFY_CUBES;
 	dragging = false;
 	addingSquares = true;
 	ctrlHeld = false;
@@ -84,7 +84,7 @@ class CubeSlider {
 	private phaseLabel: PhaseLabel;
 	private slowerButton: IconButton;
 	private fasterButton: IconButton;
-
+	
 	private textArea = document.getElementById('save-textarea') as HTMLTextAreaElement;
 	private ipeArea = document.getElementById('ipe-textarea') as HTMLTextAreaElement;
 
@@ -138,7 +138,6 @@ class CubeSlider {
 
 		this.panButton = new IconButton(
 			"pan", "Pan the canvas", true, "P");
-		this.panButton.setPressed(true);
 		this.panButton.onClick(this.panMode.bind(this));
 		this.bottomBar.addChild(this.panButton);
 
@@ -149,6 +148,7 @@ class CubeSlider {
 
 		this.modifySquareButton = new IconButton(
 			"add-square", "Add squares", true, "C");
+		this.modifySquareButton.setPressed(true);
 		this.modifySquareButton.onClick(this.modifySquaresMode.bind(this));
 		this.bottomBar.addChild(this.modifySquareButton);
 
@@ -250,8 +250,18 @@ class CubeSlider {
 		this.control.distance = 20;
 		this.control.target = { x: 0, y: 0, z: 0 };
 		this.control.angles.x = 30;
+		// start in MODIFY_CUBES mode
+		this.control.allowControl = false;
+		
+		this.app.view.addEventListener("pointermove", (event) => {
+			// buttons value contains a bit for all possible buttons. Bit "4" is the value for the middle mouse button.
+			if (event.buttons & 4) {
+				this.control.angles.x += event.movementY * 0.5;
+				this.control.angles.y -= event.movementX * 0.5;
+			}
+		});
 
-
+		
 		// open the welcome dialog
 		const dialogs = document.getElementById('welcomeDialog');
 		//dialogs!.style.display = 'block';
@@ -599,7 +609,7 @@ class CubeSlider {
 	}
 
 	modifySquaresMode(): void {
-		this.editMode = EditMode.ADD_SQUARE;
+		this.editMode = EditMode.MODIFY_CUBES;
 		this.control.allowControl = false;
 		this.world.modifyingCubes = true;
 		this.panButton.setPressed(false);

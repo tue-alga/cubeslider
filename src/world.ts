@@ -3,6 +3,7 @@ import * as PIXI3D from 'pixi3d';
 import { Viewport } from 'pixi-viewport';
 
 import { Color, ComponentStatus, Position, Square } from './square';
+import {InteractionEvent} from "pixi.js";
 
 /**
  * A single cell in the grid. Contains either a cube (with the ID stored) or
@@ -197,7 +198,7 @@ class World {
 
 	pipeline: PIXI3D.StandardPipeline;
 
-	modifyingCubes = false;
+	modifyingCubes = true;
 
 	/**
 	 * Creates the world and initializes its PIXI elements (viewport and grid).
@@ -256,8 +257,8 @@ class World {
 				tile.on("pointerout", () => {
 					this.hidePhantomCube();
 				});
-				tile.on("pointerdown", () => {
-					if (this.modifyingCubes && !this.hasSquare(newCubePosition)) {
+				tile.on("pointerdown", (event: InteractionEvent) => {
+					if (event.data.button == 0 && this.modifyingCubes && !this.hasSquare(newCubePosition)) {
 						this.hidePhantomCube();
 						this.addSquare(new Square(this, newCubePosition, Color.GRAY));
 					}
