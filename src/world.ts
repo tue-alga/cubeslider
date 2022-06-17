@@ -342,7 +342,7 @@ class World {
 	 */
 	addSquare(square: Square): void {
 		this.addSquareUnmarked(square);
-		//this.markComponents();
+		this.markComponents();
 	}
 
 	/**
@@ -365,7 +365,7 @@ class World {
 	 */
 	moveSquare(square: Square, to: Position): void {
 		this.moveSquareUnmarked(square, to);
-		//this.markComponents();
+		this.markComponents();
 	}
 
 	/**
@@ -389,7 +389,7 @@ class World {
 	 */
 	removeSquare(square: Square): void {
 		this.removeSquareUnmarked(square);
-		//this.markComponents();
+		this.markComponents();
 	}
 
 	/**
@@ -433,7 +433,7 @@ class World {
 			this.getCell(square.p).squareId = i;
 		}
 		this.currentMove = null;
-		//this.markComponents();
+		this.markComponents();
 	}
 
 	/**
@@ -644,6 +644,189 @@ class World {
 		];
 	}
 
+	/**
+	 * Colors the squares by their connectivity, and set their connectivity
+	 * fields
+	 */
+	markComponents(): void {
+		const [components, chunkIds] = this.findComponents();
+		const stable = this.findSquareStability();
+		for (let i = 0; i < this.squares.length; i++) {
+			if (components[i] === 2) {
+				this.squares[i].setComponentStatus(stable[i] ? ComponentStatus.CHUNK_STABLE : ComponentStatus.CHUNK_CUT);
+			} else if (components[i] === 1) {
+				this.squares[i].setComponentStatus(stable[i] ? ComponentStatus.LINK_STABLE : ComponentStatus.LINK_CUT);
+			} else if (components[i] === 3) {
+				this.squares[i].setComponentStatus(ComponentStatus.CONNECTOR);
+			} else {
+				this.squares[i].setComponentStatus(ComponentStatus.NONE);
+			}
+			this.squares[i].setChunkId(chunkIds[i]);
+		}
+	}
+	
+	/**
+	 * Returns a list of component values for each cube
+	 * 
+	 * This returns two arrays. The first array indicates for each cube the
+	 * component status: 1 and 2 mean that the square is in a link or chunk,
+	 * respectively, while 3 means that the cube is a connector (that is, in
+	 * more than one component). The second array contains the ID of the chunk
+	 * the square is in. If the square is a connector and in more than one chunk,
+	 * the chunk ID of the chunk closer to the root is returned. Squares that
+	 * are not in a chunk get chunk ID -1.
+	 * 
+	 * If the configuration is disconnected, this returns -1 for both component
+	 * status and chunk IDs.
+	 */
+	findComponents(): [number[], number[]] {
+		let components = Array(this.squares.length).fill(-1);
+		let chunkIds = Array(this.squares.length).fill(-1);
+		
+		// don't try to find components if the configuration is disconnected
+		if (!this.squares.length || !this.isConnected()) {
+			return [components, chunkIds];
+		}
+		
+		let edgeChunks = Array();
+		edgeChunks.push(Array()); // add the first component
+		
+		let discovery = Array(this.squares.length).fill(-1);
+		let low = Array(this.squares.length).fill(-1);
+		let parent = Array(this.squares.length).fill(-1);
+		
+		let edgeStack = Array();
+		
+		for (let i = 0; i < this.squares.length; i++) {
+			if (discovery[i] == -1) {
+				this.findComponentsRecursive(i, discovery, low, edgeStack, parent, 0, edgeChunks);
+			}
+			
+			// If the edgeStack is not empty, store all remaining edges in the last component
+			while (edgeStack.length > 0) {
+				edgeChunks[edgeChunks.length - 1].push(edgeStack.pop());
+			}
+			// start a new chunk if not already done
+			if (edgeChunks[edgeChunks.length - 1].length > 0) {
+				edgeChunks.push(Array());
+			}
+			
+			edgeStack = Array();
+		}
+		
+		// Convert the list of edges to a chunk per cube
+		// We first remove chunks with 1 or 0 edges
+		// The last chunk will always have 0 edges
+		let edgeChunksOfPropperSize = Array();
+		for (let i = 0; i < edgeChunks.length - 1; i++) {
+			if (edgeChunks[i].length > 1) {
+				edgeChunksOfPropperSize.push(edgeChunks[i]);
+			}
+		}
+		debugger;
+		for (let i = 0; i < edgeChunksOfPropperSize.length; i++) {
+			let edgeChunk = edgeChunksOfPropperSize[i];			
+			for (let edge = 0; edge < edgeChunk.length; edge++) {
+				for (let j = 0; j < edgeChunk[edge].length; j++) {
+					let v = edgeChunk[edge][j];
+					if (chunkIds[v] === -1) {
+						chunkIds[v] = i;
+						components[v] = 2;
+					} else if (chunkIds[v] !== i) {
+						// it already had a different chunk id, so it belongs to multiple chunks
+						// and is therefore a connector
+						components[i] = 3;
+					}
+				}
+			}
+		}
+		// Let all cubes that are not a chunk or connector be a link.
+		for (let i = 0; i < components.length; i++) {
+			if (components[i] === -1) {
+				components[i] = 1;
+			}
+		}
+		return [components, chunkIds];
+	}
+	
+	private findComponentsRecursive(u: number, discovery: number[],
+									low: number[], edgeStack: [number, number][],
+									parent: number[], time: number, edgeChunks: [number, number][][]) {
+		// Initialize discovery time and low value
+		time += 1;
+		discovery[u] = time;
+		low[u] = time;
+		// the number of children of u in the DFS tree
+		let children = 0;
+		
+		// Go through all neighbors of vertex u.
+		// There are 6 neighbor spots to check
+		
+		let nbrs = this.neighborSquares(u);
+		for (let v of nbrs) {
+			// v is the current neighbor of u
+			
+			// if v is not visited yet, recurse
+			if (discovery[v] == -1) {
+				children++;
+				parent[v] = u;
+				
+				// store the edge in subtree stack
+				edgeStack.push([u, v]);
+				this.findComponentsRecursive(v, discovery, low, edgeStack, parent, time, edgeChunks);
+				
+				// check if the subtree rooted at v has a connection to one of the ancestors of u
+				if (low[u] > low[v]) {
+					low[u] = low[v];
+				}
+				
+				// If u is a cut vertex,
+				// pop all edges from stack till the edge u-v
+				if ((discovery[u] == 1 && children > 1) || (discovery[u] > 1 && low[v] >= discovery[u])) {
+					while (edgeStack[edgeStack.length - 1][0] != u || edgeStack[edgeStack.length - 1][1] != v) {
+						edgeChunks[edgeChunks.length - 1].push(edgeStack.pop() as [number, number]);
+					}
+					edgeChunks[edgeChunks.length - 1].push(edgeStack.pop() as [number, number]);
+					// start a new chunk
+					edgeChunks.push(Array());
+				}
+			} else if (v != parent[u] && discovery[v] < discovery[u]) {
+				// Update low value of u only if v is still in the stack
+				// (back edge, not a cross edge)
+				if (low[u] > discovery[v]) {
+					low[u] = discovery[v];
+				}
+				edgeStack.push([u, v]);
+			}
+		}
+	}
+	
+	private neighborSquares(i: number) : number[] {
+		let nbrs = Array();
+		let x = this.squares[i].p[0];
+		let y = this.squares[i].p[1];
+		let z = this.squares[i].p[2];
+		if (this.hasSquare([x - 1, y, z])) {
+			nbrs.push(this.getSquareId([x - 1, y, z]));
+		}
+		if (this.hasSquare([x + 1, y, z])) {
+			nbrs.push(this.getSquareId([x + 1, y, z]));
+		}
+		if (this.hasSquare([x, y- 1, z])) {
+			nbrs.push(this.getSquareId([x, y - 1, z]));
+		}
+		if (this.hasSquare([x, y + 1, z])) {
+			nbrs.push(this.getSquareId([x, y + 1, z]));
+		}
+		if (this.hasSquare([x, y, z - 1])) {
+			nbrs.push(this.getSquareId([x, y, z - 1]));
+		}
+		if (this.hasSquare([x, y, z + 1])) {
+			nbrs.push(this.getSquareId([x, y, z + 1]));
+		}
+		return nbrs;
+	}
+	
 	/**
 	 * Determines which squares in the configuration are stable.
 	 *

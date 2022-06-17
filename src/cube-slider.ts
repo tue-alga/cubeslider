@@ -369,7 +369,7 @@ class CubeSlider {
 				this.world.currentMove.execute();
 				this.world.currentMove = null;
 			}
-			//this.world.markComponents();
+			this.world.markComponents();
 
 			if (this.time === this.timeStep) {
 				break;
@@ -416,7 +416,7 @@ class CubeSlider {
 				// mark components with the moving square removed
 				const movingSquare = this.world.getSquare(this.world.currentMove.sourcePosition())!;
 				this.world.removeSquareUnmarked(movingSquare);
-				//this.world.markComponents();
+				this.world.markComponents();
 				this.world.addSquareUnmarked(movingSquare);
 			}
 		}

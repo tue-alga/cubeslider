@@ -39,7 +39,6 @@ class Square {
 	color: Color;
 	componentStatus: ComponentStatus;
 	chunkId: number;
-	onBoundary: boolean = false;
 	pixi = new PIXI3D.Container3D();
 	mesh: PIXI3D.Mesh3D;
 	selectionCircle = new PIXI.Graphics();
