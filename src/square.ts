@@ -15,6 +15,14 @@ class Color {
 	static readonly ORANGE = new Color(248, 160, 80);
 	static readonly GREEN = new Color(140, 218, 90);
 
+	static readonly CONNECTOR_COLOR = new PIXI3D.Color(0.45, 0.65, 0.925);
+	static readonly CHUNK_STABLE_COLOR = new PIXI3D.Color(0.3, 0.5, 0.9);
+	static readonly CHUNK_CUT_COLOR = new PIXI3D.Color(0.6, 0.8, 0.95);
+	static readonly LINK_STABLE_COLOR = new PIXI3D.Color(0.9, 0.5, 0.3);
+	static readonly LINK_CUT_COLOR = new PIXI3D.Color(0.95, 0.8, 0.6);
+	
+	static readonly BASE_COLOR = new PIXI3D.Color(1, 1, 1);
+	
 	constructor(public r: number, public g: number, public b: number) {
 	}
 
@@ -58,7 +66,7 @@ class Square {
 
 		// @ts-ignore
 		let material = new PIXI3D.StandardMaterial();
-		material.baseColor = new PIXI3D.Color(1, 1, 1);
+		material.baseColor = Color.BASE_COLOR;
 		material.exposure = 1.5;
 		material.metallic = 0.3;
 		material.roughness = 0.5;
@@ -121,19 +129,22 @@ class Square {
 		} else {
 			switch (this.componentStatus) {
 				case ComponentStatus.CONNECTOR:
-					material.baseColor = new PIXI3D.Color(0.45, 0.65, 0.925);
+					material.baseColor = Color.CONNECTOR_COLOR;
 					break;
 				case ComponentStatus.CHUNK_STABLE:
-					material.baseColor = new PIXI3D.Color(0.3, 0.5, 0.9);
+					material.baseColor = Color.CHUNK_STABLE_COLOR;
 					break;
 				case ComponentStatus.CHUNK_CUT:
-					material.baseColor = new PIXI3D.Color(0.6, 0.8, 0.95);
+					material.baseColor = Color.CHUNK_CUT_COLOR;
 					break;
 				case ComponentStatus.LINK_STABLE:
-					material.baseColor = new PIXI3D.Color(0.9, 0.5, 0.3);
+					material.baseColor = Color.LINK_STABLE_COLOR;
 					break;
 				case ComponentStatus.LINK_CUT:
-					material.baseColor = new PIXI3D.Color(0.95, 0.8, 0.6);
+					material.baseColor = Color.LINK_CUT_COLOR;
+					break;
+				default:
+					material.baseColor = Color.BASE_COLOR;
 					break;
 			}
 		}

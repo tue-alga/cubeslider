@@ -452,6 +452,26 @@ class World {
 	}
 
 	/**
+	 * Returns a neighbor of the give cube
+	 */
+	getOneNeighbor(cube: Square): Square | null {
+		const [x, y, z] = cube.p;
+		let neighbor = this.getSquare([x + 1, y, z]);
+		if (neighbor) return neighbor;
+		neighbor = this.getSquare([x - 1, y, z]);
+		if (neighbor) return neighbor;
+		neighbor = this.getSquare([x, y + 1, z]);
+		if (neighbor) return neighbor;
+		neighbor = this.getSquare([x, y - 1, z]);
+		if (neighbor) return neighbor;
+		neighbor = this.getSquare([x, y, z + 1]);
+		if (neighbor) return neighbor;
+		neighbor = this.getSquare([x, y, z - 1]);
+		if (neighbor) return neighbor;
+		return null;
+	}
+
+	/**
 	 * Given a square, returns a list of all the moves starting at that square that
 	 * are valid.
 	 *
@@ -697,33 +717,23 @@ class World {
 		
 		let edgeStack = Array();
 		
-		for (let i = 0; i < this.squares.length; i++) {
-			if (discovery[i] == -1) {
-				this.findComponentsRecursive(i, discovery, low, edgeStack, parent, 0, edgeChunks);
-			}
-			
-			// If the edgeStack is not empty, store all remaining edges in the last component
-			while (edgeStack.length > 0) {
-				edgeChunks[edgeChunks.length - 1].push(edgeStack.pop());
-			}
-			// start a new chunk if not already done
-			if (edgeChunks[edgeChunks.length - 1].length > 0) {
-				edgeChunks.push(Array());
-			}
-			
-			edgeStack = Array();
+		// Start the search from the first cube in the array
+		this.findComponentsRecursive(0, discovery, low, edgeStack, parent, 0, edgeChunks);
+
+		// If the edgeStack is not empty, store all remaining edges in the last component
+		while (edgeStack.length > 0) {
+			edgeChunks[edgeChunks.length - 1].push(edgeStack.pop());
 		}
 		
 		// Convert the list of edges to a chunk per cube
 		// We first remove chunks with 1 or 0 edges
 		// The last chunk will always have 0 edges
 		let edgeChunksOfPropperSize = Array();
-		for (let i = 0; i < edgeChunks.length - 1; i++) {
+		for (let i = 0; i < edgeChunks.length; i++) {
 			if (edgeChunks[i].length > 1) {
 				edgeChunksOfPropperSize.push(edgeChunks[i]);
 			}
 		}
-		debugger;
 		for (let i = 0; i < edgeChunksOfPropperSize.length; i++) {
 			let edgeChunk = edgeChunksOfPropperSize[i];			
 			for (let edge = 0; edge < edgeChunk.length; edge++) {
@@ -740,12 +750,28 @@ class World {
 				}
 			}
 		}
+		
 		// Let all cubes that are not a chunk or connector be a link.
 		for (let i = 0; i < components.length; i++) {
 			if (components[i] === -1) {
 				components[i] = 1;
 			}
 		}
+
+		// Find all loose cubes.
+		// A loose cube is a cube with only 1 neighbor that is in a chunk
+		for (let i = 0; i < components.length; i++) {
+			if (components[i] === 1 &&
+				this.degree(this.squares[i]) === 1) {
+				const neighbor = this.getOneNeighbor(this.squares[i])!;
+				const neighborIndex = this.getSquareId(neighbor.p)!;
+				if (components[neighborIndex] === 2) {
+					components[i] = 2;
+					chunkIds[i] = chunkIds[neighborIndex];
+				}
+			}
+		}
+		
 		return [components, chunkIds];
 	}
 	
@@ -762,7 +788,7 @@ class World {
 		// Go through all neighbors of vertex u.
 		// There are 6 neighbor spots to check
 		
-		let nbrs = this.neighborSquares(u);
+		let nbrs = this.neighborSquaresIDs(u);
 		for (let v of nbrs) {
 			// v is the current neighbor of u
 			
@@ -791,8 +817,7 @@ class World {
 					edgeChunks.push(Array());
 				}
 			} else if (v != parent[u] && discovery[v] < discovery[u]) {
-				// Update low value of u only if v is still in the stack
-				// (back edge, not a cross edge)
+				// If there is a back edge, update the low value of u
 				if (low[u] > discovery[v]) {
 					low[u] = discovery[v];
 				}
@@ -801,7 +826,7 @@ class World {
 		}
 	}
 	
-	private neighborSquares(i: number) : number[] {
+	private neighborSquaresIDs(i: number) : number[] {
 		let nbrs = Array();
 		let x = this.squares[i].p[0];
 		let y = this.squares[i].p[1];
