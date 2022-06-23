@@ -16,7 +16,7 @@ type WorldCell = {
 /**
  * An generator of moves.
  */
-type Algorithm = Generator<Move, void, undefined>;
+type MoveGenerator = Generator<Move, void, undefined>;
 
 /**
  * Possible moves (slides and convex transitions). Slides are represented by
@@ -102,17 +102,49 @@ class Move {
 
 		let has = this.world.hasNeighbors(this.position);
 
-		// TODO ADAPT TO 3D
 		switch (this.direction) {
-			case "N":
-				return (has['W'] && has['NW']) || (has['E'] && has['NE']);
-			case "E":
-				return (has['N'] && has['NE']) || (has['S'] && has['SE']);
-			case "S":
-				return (has['W'] && has['SW']) || (has['E'] && has['SE']);
-			case "W":
-				return (has['N'] && has['NW']) || (has['S'] && has['SW']);
-
+			case "x":
+				return (
+					(has['y'] && has['xy']) ||
+					(has['Y'] && has['xY']) ||
+					(has['z'] && has['xz']) ||
+					(has['Z'] && has['xZ'])
+				);
+			case "X":
+				return (
+					(has['y'] && has['Xy']) ||
+					(has['Y'] && has['XY']) ||
+					(has['z'] && has['Xz']) ||
+					(has['Z'] && has['XZ'])
+				);
+			case "y":
+				return (
+					(has['x'] && has['xy']) ||
+					(has['X'] && has['Xy']) ||
+					(has['z'] && has['yz']) ||
+					(has['Z'] && has['yZ'])
+				);
+			case "Y":
+				return (
+					(has['x'] && has['xY']) ||
+					(has['X'] && has['XY']) ||
+					(has['z'] && has['Yz']) ||
+					(has['Z'] && has['YZ'])
+				);
+			case "z":
+				return (
+					(has['x'] && has['xz']) ||
+					(has['X'] && has['Xz']) ||
+					(has['y'] && has['yz']) ||
+					(has['Y'] && has['Yz'])	
+				);
+			case "Z":
+				return (
+					(has['x'] && has['xZ']) ||
+					(has['X'] && has['XZ']) ||
+					(has['y'] && has['yZ']) ||
+					(has['Y'] && has['YZ'])
+				);
 			default:
 				// for corner moves, need to ensure that there is no square in
 				// the first direction (which would be in our way) and there
@@ -448,6 +480,18 @@ class World {
 		has['Y'] = this.hasSquare([x, y + 1, z]);
 		has['z'] = this.hasSquare([x, y, z - 1]);
 		has['Z'] = this.hasSquare([x, y, z + 1]);
+		has['xy'] = this.hasSquare([x - 1, y - 1, z]);
+		has['xY'] = this.hasSquare([x - 1, y + 1, z]);
+		has['xz'] = this.hasSquare([x - 1, y, z - 1]);
+		has['xZ'] = this.hasSquare([x - 1, y, z + 1]);
+		has['Xy'] = this.hasSquare([x + 1, y - 1, z]);
+		has['XY'] = this.hasSquare([x + 1, y + 1, z]);
+		has['Xz'] = this.hasSquare([x + 1, y, z - 1]);
+		has['XZ'] = this.hasSquare([x + 1, y, z + 1]);
+		has['yz'] = this.hasSquare([x, y - 1, z - 1]);
+		has['yZ'] = this.hasSquare([x, y - 1, z + 1]);
+		has['Yz'] = this.hasSquare([x, y + 1, z - 1]);
+		has['YZ'] = this.hasSquare([x, y + 1, z + 1]);
 		return has;
 	}
 
@@ -500,6 +544,7 @@ class World {
 	 * Returns a move from and to the given coordinates.
 	 */
 	getMoveTo(source: Square, target: Position): Move | null {
+		debugger;
 		const moves = this.validMovesFrom(source.p);
 		for (let move of moves) {
 			if (move.targetPosition()[0] === target[0] &&
@@ -519,7 +564,7 @@ class World {
 	 * @param from The source coordinate, containing the square we want to move.
 	 * @param to The target coordinate, which should be an empty cell.
 	 */
-	*shortestMovePath(from: Position, to: Position): Algorithm {
+	*shortestMovePath(from: Position, to: Position): MoveGenerator {
 
 		// temporarily remove the origin square from the configuration, to avoid
 		// invalid moves in the resulting move path (because we could slide
@@ -981,4 +1026,4 @@ class World {
 	}
 }
 
-export { Algorithm, World, Move, moveDirections };
+export { MoveGenerator, World, Move, moveDirections };

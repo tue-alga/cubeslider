@@ -2,9 +2,10 @@ import * as PIXI from 'pixi.js';
 import * as PIXI3D from 'pixi3d';
 
 import { Square, Color } from './square';
-import { World, Move } from './world';
+import {World, Move, MoveGenerator} from './world';
 import { IconButton, IconColorButton, TextButton, Label, Separator, Toolbar, StepCountLabel, PhaseLabel } from './ui';
 
+import { Algorithm } from './algorithms/algorithm';
 import { CustomAlgorithm } from './algorithms/custom';
 
 /*import { GatherAndCompactAlgorithm } from './algorithms/gather-and-compact';
@@ -26,7 +27,7 @@ enum SimulationMode {
  */
 class CubeSlider {
 
-	readonly AVAILABLE_ALGORITHMS: { [name: string]: new (world: World) => { execute(): Generator<Move, void, undefined> } } = {
+	readonly AVAILABLE_ALGORITHMS: { [name: string]: new (world: World) => Algorithm } = {
 		/*"Gather & Compact": GatherAndCompactAlgorithm,
 		"Gather": GatherAlgorithm,
 		"Compact": CompactAlgorithm,
@@ -51,7 +52,7 @@ class CubeSlider {
 	timeSpeed: number = 0.1;
 
 	world: World;
-	algorithm: Generator<Move> | null = null;
+	algorithm: IterableIterator<Move> | null = null;
 
 	// selected objects
 	private selection: Square[] = [];
@@ -520,7 +521,7 @@ class CubeSlider {
 		}*/
 	}
 
-	createAlgorithm(): Generator<Move> {
+	createAlgorithm(): IterableIterator<Move> {
 		return new this.AVAILABLE_ALGORITHMS[this.selectedAlgorithm](this.world).execute();
 	}
 

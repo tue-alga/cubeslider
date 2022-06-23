@@ -1,10 +1,13 @@
-import { Algorithm, Move, World } from '../world';
+import { MoveGenerator, World} from '../world';
+import { Algorithm } from "./algorithm";
 
-class CustomAlgorithm {
+class CustomAlgorithm extends Algorithm {
 
-	constructor(public world: World) { }
+	constructor(public world: World) {
+		super(world);
+	}
 
-	*execute(): Algorithm {
+	override *execute(): MoveGenerator {
 		const moveJson = window.prompt('Input a move sequence (as a JSON array containing moves of the form [x1, y1, z1, x2, y2, z2]):')!;
 		let sequence: any;
 		try {
@@ -12,7 +15,6 @@ class CustomAlgorithm {
 		} catch (e) {
 			throw new Error('JSON string was invalid');
 		}
-
 		printStep(`Running custom move sequence`);
 
 		for (let move of sequence) {
