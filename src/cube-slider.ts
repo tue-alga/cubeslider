@@ -7,9 +7,9 @@ import { IconButton, IconColorButton, TextButton, Label, Separator, Toolbar, Ste
 
 import { Algorithm } from './algorithms/algorithm';
 import { CustomAlgorithm } from './algorithms/custom';
+import { GatherAlgorithm } from './algorithms/gather';
 
 /*import { GatherAndCompactAlgorithm } from './algorithms/gather-and-compact';
-import { GatherAlgorithm } from './algorithms/gather';
 import { CompactAlgorithm } from './algorithms/compact';
 import { CanonicalizeAlgorithm } from './algorithms/canonicalize';
 import { CustomAlgorithm } from './algorithms/custom';*/
@@ -32,11 +32,12 @@ class CubeSlider {
 		"Gather": GatherAlgorithm,
 		"Compact": CompactAlgorithm,
 		"Canonicalize": CanonicalizeAlgorithm,*/
+		"Gather": GatherAlgorithm,
 		"Custom move sequence": CustomAlgorithm
 	};
-	selectedAlgorithm = "Custom move sequence";  // TODO
+	selectedAlgorithm = "Gather";
 
-	private app: PIXI.Application;
+	private readonly app: PIXI.Application;
 
 	editMode: EditMode = EditMode.MODIFY_CUBES;
 	dragging = false;
@@ -421,7 +422,7 @@ class CubeSlider {
 				this.world.addSquareUnmarked(movingSquare);
 			}
 		}
-
+		
 		this.topBar.setPosition(
 			this.app.renderer.width / 2 - this.topBar.getWidth() / 2,
 			0);

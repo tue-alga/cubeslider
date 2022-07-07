@@ -54,7 +54,6 @@ class Square {
 	componentMark = new PIXI.Graphics();
 	backgroundPixi = new PIXI.Graphics();
 	foregroundPixi = new PIXI.Graphics();
-	dots: [number, PIXI.Graphics][] = [];
 	selected: boolean = false;
 
 	constructor(private world: World, p: [number, number, number], color: Color) {

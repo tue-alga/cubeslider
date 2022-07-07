@@ -1,9 +1,9 @@
 import * as PIXI from 'pixi.js';
+import {InteractionEvent} from 'pixi.js';
 import * as PIXI3D from 'pixi3d';
-import { Viewport } from 'pixi-viewport';
+import {MaterialRenderSortType} from 'pixi3d';
 
-import { Color, ComponentStatus, Position, Square } from './square';
-import {InteractionEvent} from "pixi.js";
+import {Color, ComponentStatus, Position, Square} from './square';
 
 /**
  * A single cell in the grid. Contains either a cube (with the ID stored) or
@@ -300,6 +300,41 @@ class World {
 			this.ground.push(row);
 		}
 
+		let axisWidth = 0.1;
+		let axisHeight = 2;
+		
+		let zAxisMaterial = new PIXI3D.StandardMaterial();
+		zAxisMaterial.baseColor = new PIXI3D.Color(0, 0, 1);
+		let zAxis = this.pixi.addChild(PIXI3D.Mesh3D.createCube());
+		zAxis.position.x = 0;
+		zAxis.position.y = axisHeight;
+		zAxis.position.z = 0;
+		zAxis.scale.set(axisWidth, axisHeight, axisWidth);
+		zAxis.material = zAxisMaterial;
+		zAxis.interactive = false;
+
+
+		let xAxisMaterial = new PIXI3D.StandardMaterial();
+		xAxisMaterial.baseColor = new PIXI3D.Color(1, 0, 0);
+		let xAxis = this.pixi.addChild(PIXI3D.Mesh3D.createCube());
+		xAxis.position.x = axisHeight;
+		xAxis.position.y = 0;
+		xAxis.position.z = 0;
+		xAxis.scale.set(axisHeight, axisWidth, axisWidth);
+		xAxis.material = xAxisMaterial;
+		xAxis.interactive = false;
+
+		let yAxisMaterial = new PIXI3D.StandardMaterial();
+		yAxisMaterial.baseColor = new PIXI3D.Color(0, 1, 0);
+		let yAxis = this.pixi.addChild(PIXI3D.Mesh3D.createCube());
+		yAxis.position.x = 0;
+		yAxis.position.y = 0;
+		yAxis.position.z = -axisHeight;
+		yAxis.scale.set(axisWidth, axisWidth, axisHeight);
+		yAxis.material = yAxisMaterial;
+		yAxis.interactive = false;
+		
+
 		// phantom cube for showing where a new cube will be added
 		let material = new PIXI3D.StandardMaterial();
 		material.baseColor = new PIXI3D.Color(1, 1, 1, 0.4);
@@ -461,7 +496,6 @@ class World {
 		for (let i = 0; i < this.squares.length; i++) {
 			const square = this.squares[i];
 			square.p = [...square.resetPosition];
-			square.dots = [];
 			this.getCell(square.p).squareId = i;
 		}
 		this.currentMove = null;
@@ -544,7 +578,6 @@ class World {
 	 * Returns a move from and to the given coordinates.
 	 */
 	getMoveTo(source: Square, target: Position): Move | null {
-		debugger;
 		const moves = this.validMovesFrom(source.p);
 		for (let move of moves) {
 			if (move.targetPosition()[0] === target[0] &&
@@ -565,7 +598,6 @@ class World {
 	 * @param to The target coordinate, which should be an empty cell.
 	 */
 	*shortestMovePath(from: Position, to: Position): MoveGenerator {
-
 		// temporarily remove the origin square from the configuration, to avoid
 		// invalid moves in the resulting move path (because we could slide
 		// along the origin square itself)
@@ -577,6 +609,7 @@ class World {
 		this.removeSquareUnmarked(square);
 
 		// do BFS over the move graph
+		// seen has positions "1,1,1" (strings) as keys
 		let seen: { [key: string]: { 'seen': boolean, 'move': Move | null } } = {};
 		let queue: [Position, Move | null][] = [[from, null]];
 
@@ -601,6 +634,7 @@ class World {
 		}
 
 		if (!seen[to[0] + "," + to[1] + "," + to[2]]) {
+			this.addSquare(square);
 			throw "No move path possible from " + from + " to " + to;
 		}
 
@@ -608,7 +642,7 @@ class World {
 		let path: Move[] = [];
 		let c = to;
 		while (c[0] !== from[0] || c[1] !== from[1] || c[2] !== from[2]) {
-			let move = seen[c[0] + "," + c[1]].move!;
+			let move = seen[c[0] + "," + c[1] + "," +c[2]].move!;
 			path.unshift(move);
 			c = move.sourcePosition();
 		}
@@ -710,6 +744,17 @@ class World {
 	}
 
 	/**
+	 * Returns the amount of cubes necessary to span the complete bounding box twice.
+	 */
+	boundingBoxSpan(): number {
+		const bounds = this.bounds();
+		const width = bounds[3] - bounds[0] + 1;
+		const depth = bounds[4] - bounds[1] + 1;
+		const height = bounds[5] - bounds[2] + 1;
+		return 2 * (width + depth + height);
+	}
+
+	/**
 	 * Colors the squares by their connectivity, and set their connectivity
 	 * fields
 	 */
@@ -790,7 +835,7 @@ class World {
 					} else if (chunkIds[v] !== i) {
 						// it already had a different chunk id, so it belongs to multiple chunks
 						// and is therefore a connector
-						components[i] = 3;
+						components[v] = 3;
 					}
 				}
 			}
@@ -958,6 +1003,93 @@ class World {
 		}
 	}
 
+	/**
+	 * Given a square, determines the number of squares in its descendant(s),
+	 * Viewed from a different square called "root"
+	 */
+	capacity(s: Square, root: Square): number {
+		// do a BFS from the root, counting the squares, but disregard s
+				
+		let seen = Array(this.squares.length).fill(false);
+		const bId = this.getSquareId(s.p)!;
+		seen[bId] = true;
+		let squareCount = 1;
+		
+		const rootId = this.getSquareId(root.p)!
+		let queue = [rootId];
+		
+		while (queue.length !== 0) {
+			const squareId = queue.shift()!;
+			if (seen[squareId]) {
+				continue;
+			}
+			
+			const square = this.squares[squareId];
+			seen[squareId] = true;
+			if (bId !== squareId) {
+				squareCount++;
+			}
+			
+			const nbrs = [
+				this.getCell([square.p[0] - 1, square.p[1], square.p[2]]),
+				this.getCell([square.p[0] + 1, square.p[1], square.p[2]]),
+				this.getCell([square.p[0], square.p[1] - 1, square.p[2]]),
+				this.getCell([square.p[0], square.p[1] + 1, square.p[2]]),
+				this.getCell([square.p[0], square.p[1], square.p[2] - 1]),
+				this.getCell([square.p[0], square.p[1], square.p[2] + 1])
+			];
+			
+			nbrs.forEach(function (c) {
+				if (c.squareId !== null) {
+					queue.push(c.squareId);
+				}	
+			});
+		}
+		
+		return this.squares.length - squareCount;
+	}
+
+	/**
+	 * Return an array with for each square if it contributes to the capacity of s
+	 */
+	capacitySquares(s: Square, root: Square): boolean[] {
+		// do a BFS from the root, counting the squares, but disregard s
+
+		let seen = Array(this.squares.length).fill(false);
+		const bId = this.getSquareId(s.p)!;
+		seen[bId] = true;
+
+		const rootId = this.getSquareId(root.p)!
+		let queue = [rootId];
+
+		while (queue.length !== 0) {
+			const squareId = queue.shift()!;
+			if (seen[squareId]) {
+				continue;
+			}
+
+			const square = this.squares[squareId];
+			seen[squareId] = true;
+
+			const nbrs = [
+				this.getCell([square.p[0] - 1, square.p[1], square.p[2]]),
+				this.getCell([square.p[0] + 1, square.p[1], square.p[2]]),
+				this.getCell([square.p[0], square.p[1] - 1, square.p[2]]),
+				this.getCell([square.p[0], square.p[1] + 1, square.p[2]]),
+				this.getCell([square.p[0], square.p[1], square.p[2] - 1]),
+				this.getCell([square.p[0], square.p[1], square.p[2] + 1])
+			];
+
+			nbrs.forEach(function (c) {
+				if (c.squareId !== null) {
+					queue.push(c.squareId);
+				}
+			});
+		}
+		
+		return seen.map(c => !c);
+	}
+	
 	/**
 	 * Determines if the configuration is xyz-monotone.
 	 */
