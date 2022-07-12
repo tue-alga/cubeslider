@@ -399,6 +399,15 @@ class Configuration {
     }
 
     /**
+     * Checks whether a position is contained within the current bounding box of the configuration
+     */
+    boundingBoxContains([x, y, z]: [number, number, number]): boolean {
+        return  x >= this.bounds()[0] && x <= this.bounds()[3] &&
+                y >= this.bounds()[1] && y <= this.bounds()[4] &&
+                z >= this.bounds()[2] && z <= this.bounds()[5];
+    }
+
+    /**
      * Returns the amount of cubes necessary to span the complete bounding box twice.
      */
     boundingBoxSpan(): number {

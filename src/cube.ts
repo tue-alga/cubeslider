@@ -1,8 +1,9 @@
 import * as PIXI from 'pixi.js';
 import * as PIXI3D from 'pixi3d';
 
-import { World, Move } from './world';
+import {SimulationMode, World} from './world';
 import {InteractionEvent} from "pixi.js";
+import { Move } from './move';
 
 type Position = [number, number, number];
 
@@ -98,9 +99,9 @@ class Cube {
 		shield.interactive = true;
 		shield.alpha = 0;
 		shield.hitArea = new PIXI3D.PickingHitArea(undefined, shield);
-		let newCubePosition: Position = [
-			this.p[0] + p[0], this.p[1] + p[1], this.p[2] + p[2]];
 		shield.on("pointerover", () => {
+			let newCubePosition: Position = [
+				this.p[0] + p[0], this.p[1] + p[1], this.p[2] + p[2]];
 			if (this.world.modifyingCubes && !this.world.configuration.hasCube(newCubePosition)) {
 				this.world.showPhantomCube(newCubePosition);
 			}
@@ -109,8 +110,10 @@ class Cube {
 			this.world.hidePhantomCube();
 		});
 		shield.on("pointerdown", (event: InteractionEvent) => {
-			if (this.world.modifyingCubes) {
-				// primary button (0) adds cubes, secondary button (2) removes cubes 
+			if (this.world.modifyingCubes && this.world.simulationMode === SimulationMode.RESET) {
+				let newCubePosition: Position = [
+					this.p[0] + p[0], this.p[1] + p[1], this.p[2] + p[2]];
+				// primary button (0) adds cubes, secondary button (2) removes cubes
 				if (event.data.button == 0 && !this.world.configuration.hasCube(newCubePosition)) {
 					this.world.hidePhantomCube();
 					this.world.addCube(new Cube(this.world, newCubePosition, this.color));

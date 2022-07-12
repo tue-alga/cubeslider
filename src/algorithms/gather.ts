@@ -60,31 +60,52 @@ class GatherAlgorithm extends Algorithm {
      * 
      * * n is a diagonal neighbor of s, and the two cells neighboring both n and s are filled by Cubes
      *  or else
-     * * n is a direct neighbor of s
+     * * n is a direct neighbor of s and n lies within the bounding box
      */
     findGatherTarget(s: Cube) : Position {
         // first check all corners
         const has = this.configuration.hasNeighbors([s.p[0], s.p[1], s.p[2]]);
         let [x, y, z] = s.p;
         
-        // All z-1 positions are evaluated last, since this might make the Cube dip below the
-        // guideline plane. This is undesired for visual reasons.
         if (has['x'] && has['y']) return [x - 1, y - 1, z];
         if (has['x'] && has['Y']) return [x - 1, y + 1, z];
+        if (has['x'] && has['z']) return [x - 1, y, z - 1];
         if (has['x'] && has['Z']) return [x - 1, y, z + 1];
         if (has['X'] && has['y']) return [x + 1, y - 1, z];
         if (has['X'] && has['Y']) return [x + 1, y + 1, z];
-        if (has['X'] && has['Z']) return [x + 1, y, z + 1];
-        if (has['y'] && has['Z']) return [x, y - 1, z + 1];
-        if (has['Y'] && has['Z']) return [x, y + 1, z + 1];
-        if (has['x'] && has['z']) return [x - 1, y, z - 1];
         if (has['X'] && has['z']) return [x + 1, y, z - 1];
+        if (has['X'] && has['Z']) return [x + 1, y, z + 1];
         if (has['y'] && has['z']) return [x, y - 1, z - 1];
+        if (has['y'] && has['Z']) return [x, y - 1, z + 1];
         if (has['Y'] && has['z']) return [x, y + 1, z - 1];
+        if (has['Y'] && has['Z']) return [x, y + 1, z + 1];
         
-        // check all sides, we already know that there are no corners
-        if (has['x'] || has['X'] || has['y'] || has['Y']) return [x, y, z - 1];
-        if (has['z'] || has['Z']) return [x - 1, y, z];
+        // check all sides, we already know that there are no corners.
+        // only return the side that is within the bounding box
+        if (has['x'] && has['X']) {
+            let possiblePositions: Position[] = [[x, y, z - 1], [x, y, z + 1], [x, y - 1, z], [x, y + 1, z]];
+            for (let p of possiblePositions) {
+                if (this.configuration.boundingBoxContains(p)) {
+                    return p;
+                }
+            }
+        }
+        if (has['y'] && has['Y']) {
+            let possiblePositions: Position[] = [ [x, y, z - 1], [x, y, z + 1], [x - 1, y, z], [x + 1, y, z] ];
+            for (let p of possiblePositions) {
+                if (this.configuration.boundingBoxContains(p)) {
+                    return p;
+                }
+            }
+        }
+        if (has['z'] && has['Z']) {
+            let possiblePositions: Position[] = [ [x - 1, y, z], [x + 1, y, z], [x, y - 1, z], [x, y + 1, z] ];
+            for (let p of possiblePositions) {
+                if (this.configuration.boundingBoxContains(p)) {
+                    return p;
+                }
+            }
+        }
         
         // if we end here, there are no neighbors, so the Cube is disconnected
         throw Error("Cube is disconnected");

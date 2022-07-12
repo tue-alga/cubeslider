@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js';
 import * as PIXI3D from 'pixi3d';
 
 import { Cube, Color } from './cube';
-import { World, Move } from './world';
+import { World } from './world';
 import {
 	IconButton,
 	IconColorButton,
@@ -18,6 +18,7 @@ import {
 import { Algorithm } from './algorithms/algorithm';
 import { CustomAlgorithm } from './algorithms/custom';
 import { GatherAlgorithm } from './algorithms/gather';
+import {Move} from "./move";
 
 /*import { GatherAndCompactAlgorithm } from './algorithms/gather-and-compact';
 import { CompactAlgorithm } from './algorithms/compact';
@@ -25,7 +26,7 @@ import { CanonicalizeAlgorithm } from './algorithms/canonicalize';
 import { CustomAlgorithm } from './algorithms/custom';*/
 
 enum EditMode {
-	PAN, SELECT, MODIFY_CUBES, REMOVE_Cube
+	PAN, SELECT, MODIFY_CUBES
 }
 
 enum SimulationMode {
@@ -59,7 +60,6 @@ class CubeSlider {
 	uiTime: number = 0;
 	control: PIXI3D.CameraOrbitControl;
 
-	simulationMode: SimulationMode = SimulationMode.RESET;
 	timeSpeed: number = 0.1;
 
 	world: World;
@@ -372,12 +372,12 @@ class CubeSlider {
 	renderFrame(delta: number): void {
 		this.uiTime += delta;
 
-		if (this.simulationMode === SimulationMode.RUNNING) {
+		if (this.world.simulationMode === SimulationMode.RUNNING) {
 			this.time += this.timeSpeed * delta;
 
 			if (this.time > this.runUntil) {
 				this.time = this.runUntil;
-				this.simulationMode = SimulationMode.PAUSED;
+				this.world.simulationMode = SimulationMode.PAUSED;
 				this.runButton.setIcon("play");
 				this.runButton.setTooltip("Run simulation");
 				this.stepButton.setEnabled(true);
@@ -452,7 +452,7 @@ class CubeSlider {
 			this.app.renderer.width / 2 - this.statusBar.getWidth() / 2,
 			this.app.renderer.height - this.statusBar.getHeight() + Math.pow(15 - this.bottomBarOffset, 2));
 
-		if (this.simulationMode === SimulationMode.RESET) {
+		if (this.world.simulationMode === SimulationMode.RESET) {
 			this.bottomBarOffset = Math.max(this.bottomBarOffset - 0.5 * delta, 0);
 		} else {
 			this.bottomBarOffset = Math.min(this.bottomBarOffset + 0.5 * delta, 15);
@@ -466,7 +466,7 @@ class CubeSlider {
 		let x = p.x / 80;
 		let y = -p.y / 80;
 
-		if (this.simulationMode === SimulationMode.RESET) {
+		if (this.world.simulationMode === SimulationMode.RESET) {
 
 			if (this.editMode === EditMode.SELECT) {
 				const cube = this.world.getCube([Math.round(x), Math.round(y)]);
@@ -495,7 +495,7 @@ class CubeSlider {
 		let x = p.x / 80;
 		let y = -p.y / 80;
 
-		if (this.simulationMode === SimulationMode.RESET) {
+		if (this.world.simulationMode === SimulationMode.RESET) {
 			if (this.editMode === EditMode.ADD_Cube) {
 				x = Math.round(x);
 				y = Math.round(y);
@@ -518,7 +518,7 @@ class CubeSlider {
 		let x = p.x / 80;
 		let y = -p.y / 80;
 
-		if (this.simulationMode === SimulationMode.RESET) {
+		if (this.world.simulationMode === SimulationMode.RESET) {
 			if (this.editMode === EditMode.ADD_Cube) {
 				x = Math.round(x);
 				y = Math.round(y);
@@ -548,8 +548,8 @@ class CubeSlider {
 	// button handlers
 
 	run(): void {
-		if (this.simulationMode === SimulationMode.RUNNING) {
-			this.simulationMode = SimulationMode.PAUSED;
+		if (this.world.simulationMode === SimulationMode.RUNNING) {
+			this.world.simulationMode = SimulationMode.PAUSED;
 			this.runButton.setIcon("play");
 			this.runButton.setTooltip("Run simulation");
 			this.stepButton.setEnabled(true);
@@ -560,7 +560,7 @@ class CubeSlider {
 				return;
 			}
 			this.runUntil = Infinity;
-			this.simulationMode = SimulationMode.RUNNING;
+			this.world.simulationMode = SimulationMode.RUNNING;
 			this.runButton.setIcon("pause");
 			this.runButton.setTooltip("Pause simulation");
 			this.stepButton.setEnabled(false);
@@ -579,7 +579,7 @@ class CubeSlider {
 
 	step(): void {
 		this.runUntil = Math.floor(this.time) + 1;
-		this.simulationMode = SimulationMode.RUNNING;
+		this.world.simulationMode = SimulationMode.RUNNING;
 		this.runButton.setIcon("pause");
 		this.runButton.setTooltip("Pause simulation");
 
@@ -596,7 +596,7 @@ class CubeSlider {
 	}
 
 	reset(): void {
-		this.simulationMode = SimulationMode.RESET;
+		this.world.simulationMode = SimulationMode.RESET;
 		this.runButton.setIcon("play");
 		this.runButton.setTooltip("Run simulation");
 		this.runButton.setEnabled(true);
@@ -774,4 +774,4 @@ class Constants {
 	});
 }
 
-export { CubeSlider, Constants };
+export { CubeSlider, Constants, SimulationMode };

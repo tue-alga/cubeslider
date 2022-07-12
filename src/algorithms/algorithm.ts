@@ -1,5 +1,6 @@
-import {Move, World} from "../world";
+import {World} from "../world";
 import {Configuration} from "../configuration";
+import {Move} from "../move";
 
 abstract class Algorithm {
     

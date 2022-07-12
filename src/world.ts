@@ -1,11 +1,11 @@
 import * as PIXI from 'pixi.js';
 import {InteractionEvent} from 'pixi.js';
 import * as PIXI3D from 'pixi3d';
-import {MaterialRenderSortType} from 'pixi3d';
 
-import {Color, ComponentStatus, Position, Cube} from './cube';
-import { Move } from './move';
+import {Color, Cube, Position} from './cube';
 import {Configuration} from "./configuration";
+import {SimulationMode} from "./cube-slider";
+
 
 /**
  * Collection of Cubes on the grid.
@@ -23,6 +23,8 @@ class World {
 	pipeline: PIXI3D.StandardPipeline;
 
 	modifyingCubes = true;
+
+	simulationMode: SimulationMode = SimulationMode.RESET;
 
 	/**
 	 * Creates the world and initializes its PIXI elements (viewport and grid).
@@ -83,7 +85,9 @@ class World {
 					this.hidePhantomCube();
 				});
 				tile.on("pointerdown", (event: InteractionEvent) => {
-					if (event.data.button == 0 && this.modifyingCubes && !this.configuration.hasCube(newCubePosition)) {
+					if (event.data.button == 0 && this.modifyingCubes &&
+							!this.configuration.hasCube(newCubePosition) &&
+							this.simulationMode === SimulationMode.RESET) {
 						this.hidePhantomCube();
 						this.addCube(new Cube(this, newCubePosition, Color.GRAY));
 					}
@@ -196,10 +200,6 @@ class World {
 		this.configuration.removeCube(cube);
 		this.pixi.removeChild(cube.pixi);
 	}
-
-	/**
-	 * 
-	 */
 }
 
-export { World, Move };
+export { World, SimulationMode };
