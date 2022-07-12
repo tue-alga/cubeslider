@@ -4,6 +4,7 @@
  */
 import {Color, ComponentStatus, Cube, Position} from "./cube";
 import {Move, moveDirections, MoveGenerator} from "./move";
+import {World} from "./world";
 
 type WorldCell = {
     CubeId: number | null;
@@ -14,26 +15,28 @@ type WorldCell = {
  */
 class Configuration {
     
-    world: WorldCell[][][] = [];
+    worldGrid: WorldCell[][][] = [];
     cubes: Cube[] = [];
     currentMove: Move | null = null;
 
+    constructor(private world: World | null) {}
+    
     /**
      * Returns the WorldCell at the given coordinate.
      */
     private getCell([x, y, z]: Position): WorldCell {
-        if (!this.world[x]) {
-            this.world[x] = [];
+        if (!this.worldGrid[x]) {
+            this.worldGrid[x] = [];
         }
-        if (!this.world[x][y]) {
-            this.world[x][y] = [];
+        if (!this.worldGrid[x][y]) {
+            this.worldGrid[x][y] = [];
         }
-        if (!this.world[x][y][z]) {
-            this.world[x][y][z] = {
+        if (!this.worldGrid[x][y][z]) {
+            this.worldGrid[x][y][z] = {
                 CubeId: null
             };
         }
-        return this.world[x][y][z];
+        return this.worldGrid[x][y][z];
     }
 
     /**
@@ -805,6 +808,9 @@ class Configuration {
      * world before calling this method.
      */
     deserialize(data: string): void {
+        if (this.world === null) {
+            throw Error("This configuration does not have a world attached to it. It makes no sense to create cubes here.")
+        }
         let obj: any = JSON.parse(data);
 
         const version = obj['_version'];
@@ -813,13 +819,13 @@ class Configuration {
         }
 
         let cubes: any[] = obj['cubes'];
-        cubes.forEach((Cube: any) => {
+        cubes.forEach((cube: any) => {
             let color = Color.BLUE;
-            if (Cube.hasOwnProperty('color')) {
-                color = new Color(Cube['color'][0],
-                    Cube['color'][1], Cube['color'][2]);
+            if (cube.hasOwnProperty('color')) {
+                color = new Color(cube['color'][0],
+                    cube['color'][1], cube['color'][2]);
             }
-            this.addCube(new Cube(this, [Cube['x'], Cube['y'], Cube['z']], color));
+            this.addCube(new Cube(this.world, [cube['x'], cube['y'], cube['z']], color));
         });
     }
 }

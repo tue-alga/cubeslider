@@ -12,7 +12,7 @@ import {SimulationMode} from "./cube-slider";
  */
 class World {
 	
-	configuration: Configuration = new Configuration();
+	configuration: Configuration = new Configuration(this);
 	pixi = new PIXI3D.Container3D();
 	showComponentMarks = false;
 

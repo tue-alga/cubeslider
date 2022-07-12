@@ -57,7 +57,7 @@ class Cube {
 	foregroundPixi = new PIXI.Graphics();
 	selected: boolean = false;
 
-	constructor(private world: World, p: [number, number, number], color: Color) {
+	constructor(private world: World | null, p: [number, number, number], color: Color) {
 		this.p = [p[0], p[1], p[2]];
 		this.resetPosition = [p[0], p[1], p[2]];
 		this.color = color;
@@ -65,32 +65,39 @@ class Cube {
 		this.chunkId = -1;
 
 		// @ts-ignore
-		let material = new PIXI3D.StandardMaterial();
-		material.baseColor = Color.BASE_COLOR;
-		material.exposure = 1.5;
-		material.metallic = 0.3;
-		material.roughness = 0.5;
-		material.shadowCastingLight = world.shadowLight;
-
-		// @ts-ignore
 		this.mesh = PIXI3D.Model.from(PIXI.Loader.shared.resources["cube.gltf"]['gltf']).meshes[0];
-		this.mesh.material = material;
-		this.mesh.position.set(0, 0, 0);
-		this.pixi.addChild(this.mesh);
 
-		this.addShield([-1, 0, 0], [0, 0, 90]);  // x
-		this.addShield([1, 0, 0], [0, 0, -90]);  // X
-		this.addShield([0, -1, 0], [90, 0, 0]);  // y
-		this.addShield([0, 1, 0], [-90, 0, 0]);  // Y
-		this.addShield([0, 0, -1], [180, 0, 0]);  // z
-		this.addShield([0, 0, 1], [0, 0, 0]);  // Z
 
-		this.updatePixi();
+		if (world !== null) {
+
+			let material = new PIXI3D.StandardMaterial();
+			material.baseColor = Color.BASE_COLOR;
+			material.exposure = 1.5;
+			material.metallic = 0.3;
+			material.roughness = 0.5;
+			material.shadowCastingLight = world.shadowLight;
+
+			this.mesh.material = material;
+			this.mesh.position.set(0, 0, 0);
+			this.pixi.addChild(this.mesh);
+		
+			this.addShield([-1, 0, 0], [0, 0, 90]);  // x
+			this.addShield([1, 0, 0], [0, 0, -90]);  // X
+			this.addShield([0, -1, 0], [90, 0, 0]);  // y
+			this.addShield([0, 1, 0], [-90, 0, 0]);  // Y
+			this.addShield([0, 0, -1], [180, 0, 0]);  // z
+			this.addShield([0, 0, 1], [0, 0, 0]);  // Z
+
+			this.updatePixi();
+		}
 
 		this.updatePosition(0, 0);
 	}
 
 	private addShield(p: Position, [rx, ry, rz]: [number, number, number]): void {
+		if (this.world === null) {
+			throw Error("Adding shields on a cube that does not have a world attached makes no sense.");
+		}
 		let shield = PIXI3D.Mesh3D.createPlane();
 		this.pixi.addChild(shield);
 		shield.scale.set(0.5);
@@ -102,29 +109,32 @@ class Cube {
 		shield.on("pointerover", () => {
 			let newCubePosition: Position = [
 				this.p[0] + p[0], this.p[1] + p[1], this.p[2] + p[2]];
-			if (this.world.modifyingCubes && !this.world.configuration.hasCube(newCubePosition)) {
-				this.world.showPhantomCube(newCubePosition);
+			if (this.world!.modifyingCubes && !this.world!.configuration.hasCube(newCubePosition)) {
+				this.world!.showPhantomCube(newCubePosition);
 			}
 		});
 		shield.on("pointerout", () => {
-			this.world.hidePhantomCube();
+			this.world!.hidePhantomCube();
 		});
 		shield.on("pointerdown", (event: InteractionEvent) => {
-			if (this.world.modifyingCubes && this.world.simulationMode === SimulationMode.RESET) {
+			if (this.world!.modifyingCubes && this.world!.simulationMode === SimulationMode.RESET) {
 				let newCubePosition: Position = [
 					this.p[0] + p[0], this.p[1] + p[1], this.p[2] + p[2]];
 				// primary button (0) adds cubes, secondary button (2) removes cubes
-				if (event.data.button == 0 && !this.world.configuration.hasCube(newCubePosition)) {
-					this.world.hidePhantomCube();
-					this.world.addCube(new Cube(this.world, newCubePosition, this.color));
+				if (event.data.button == 0 && !this.world!.configuration.hasCube(newCubePosition)) {
+					this.world!.hidePhantomCube();
+					this.world!.addCube(new Cube(this.world, newCubePosition, this.color));
 				} else if (event.data.button == 2) {
-					this.world.removeCube(this);
+					this.world!.removeCube(this);
 				}
 			}
 		});
 	}
 
 	updatePixi(): void {
+		if (this.world === null) {
+			throw Error("Calling updatePixi on a cube that does not have a world attached makes no sense.");
+		}
 		let material = this.mesh.material! as PIXI3D.StandardMaterial;
 		if (!this.world.showComponentMarks) {
 			material.baseColor = new PIXI3D.Color(1, 1, 1);
