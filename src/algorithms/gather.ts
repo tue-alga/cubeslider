@@ -19,13 +19,13 @@ class GatherAlgorithm extends Algorithm {
         let lightCube = this.findLightCube(limit, root);
         while (!this.configuration.isXYZMonotone() && lightCube !== null) {
             printMiniStep(`Gathering light Cube (${lightCube.p[0]}, ${lightCube.p[1]}, ${lightCube.p[2]})`)
-            
+
             const target = this.findGatherTarget(lightCube);
             const leaf = this.findLeafInDescendants(lightCube, root);
             if (leaf === null) {
                 break;
             }
-
+            
             yield* this.walkBoundaryUntil(leaf, lightCube, target);
 
             lightCube = this.findLightCube(limit, root);
@@ -67,18 +67,19 @@ class GatherAlgorithm extends Algorithm {
         const has = this.configuration.hasNeighbors([s.p[0], s.p[1], s.p[2]]);
         let [x, y, z] = s.p;
         
-        if (has['x'] && has['y']) return [x - 1, y - 1, z];
-        if (has['x'] && has['Y']) return [x - 1, y + 1, z];
-        if (has['x'] && has['z']) return [x - 1, y, z - 1];
-        if (has['x'] && has['Z']) return [x - 1, y, z + 1];
-        if (has['X'] && has['y']) return [x + 1, y - 1, z];
-        if (has['X'] && has['Y']) return [x + 1, y + 1, z];
-        if (has['X'] && has['z']) return [x + 1, y, z - 1];
-        if (has['X'] && has['Z']) return [x + 1, y, z + 1];
-        if (has['y'] && has['z']) return [x, y - 1, z - 1];
-        if (has['y'] && has['Z']) return [x, y - 1, z + 1];
-        if (has['Y'] && has['z']) return [x, y + 1, z - 1];
-        if (has['Y'] && has['Z']) return [x, y + 1, z + 1];
+        // if this square is part of a corner, return the fourth position that closes the chunk.
+        if (has['x'] && has['y'] && !this.configuration.hasCube([x - 1, y - 1, z])) return [x - 1, y - 1, z];
+        if (has['x'] && has['Y'] && !this.configuration.hasCube([x - 1, y + 1, z])) return [x - 1, y + 1, z];
+        if (has['x'] && has['z'] && !this.configuration.hasCube([x - 1, y, z - 1])) return [x - 1, y, z - 1];
+        if (has['x'] && has['Z'] && !this.configuration.hasCube([x - 1, y, z + 1])) return [x - 1, y, z + 1];
+        if (has['X'] && has['y'] && !this.configuration.hasCube([x + 1, y - 1, z])) return [x + 1, y - 1, z];
+        if (has['X'] && has['Y'] && !this.configuration.hasCube([x + 1, y + 1, z])) return [x + 1, y + 1, z];
+        if (has['X'] && has['z'] && !this.configuration.hasCube([x + 1, y, z - 1])) return [x + 1, y, z - 1];
+        if (has['X'] && has['Z'] && !this.configuration.hasCube([x + 1, y, z + 1])) return [x + 1, y, z + 1];
+        if (has['y'] && has['z'] && !this.configuration.hasCube([x, y - 1, z - 1])) return [x, y - 1, z - 1];
+        if (has['y'] && has['Z'] && !this.configuration.hasCube([x, y - 1, z + 1])) return [x, y - 1, z + 1];
+        if (has['Y'] && has['z'] && !this.configuration.hasCube([x, y + 1, z - 1])) return [x, y + 1, z - 1];
+        if (has['Y'] && has['Z'] && !this.configuration.hasCube([x, y + 1, z + 1])) return [x, y + 1, z + 1];
         
         // check all sides, we already know that there are no corners.
         // only return the side that is within the bounding box
@@ -137,7 +138,7 @@ class GatherAlgorithm extends Algorithm {
      * the configuration to end up at the given empty target cell.
      * It tries to find a shortest path over only the Cubes
      * contributing to the capacity of the corresponding light Cube l.
-     * One of three situations might occure:
+     * One of three situations might occur:
      * * This path exists and is also valid when considering the complete configuration:
      *      In this case, just follow this path
      * * This path exists, but is not valid when considering the complete configuration:

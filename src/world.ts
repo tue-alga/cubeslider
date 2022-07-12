@@ -200,6 +200,49 @@ class World {
 		this.configuration.removeCube(cube);
 		this.pixi.removeChild(cube.pixi);
 	}
+
+	/**
+	 * Generates a JSON string from this world.
+	 */
+	serialize(): string {
+		let cubes: any = [];
+		this.configuration.cubes.forEach((cube) => {
+			cubes.push({
+				'x': cube.resetPosition[0],
+				'y': cube.resetPosition[1],
+				'z': cube.resetPosition[2],
+				'color': [cube.color.r, cube.color.g, cube.color.b]
+			});
+		});
+		let obj: any = {
+			'_version': 1,
+			'cubes': cubes
+		};
+		return JSON.stringify(obj);
+	}
+
+	/**
+	 * Parses a JSON string back into this world. Make sure this is an empty
+	 * world before calling this method.
+	 */
+	deserialize(data: string): void {
+		let obj: any = JSON.parse(data);
+
+		const version = obj['_version'];
+		if (version > 1) {
+			throw new Error('Save file with incorrect version');
+		}
+
+		let cubes: any[] = obj['cubes'];
+		cubes.forEach((cube: any) => {
+			let color = Color.BLUE;
+			if (cube.hasOwnProperty('color')) {
+				color = new Color(cube['color'][0],
+					cube['color'][1], cube['color'][2]);
+			}
+			this.addCube(new Cube(this,[cube['x'], cube['y'], cube['z']], color));
+		});
+	}
 }
 
 export { World, SimulationMode };

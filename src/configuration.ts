@@ -781,53 +781,6 @@ class Configuration {
 
         return true;
     }
-
-
-    /**
-     * Generates a JSON string from this world.
-     */
-    serialize(): string {
-        let cubes: any = [];
-        this.cubes.forEach((Cube) => {
-            cubes.push({
-                'x': Cube.resetPosition[0],
-                'y': Cube.resetPosition[1],
-                'z': Cube.resetPosition[2],
-                'color': [Cube.color.r, Cube.color.g, Cube.color.b]
-            });
-        });
-        let obj: any = {
-            '_version': 1,
-            'cubes': cubes
-        };
-        return JSON.stringify(obj);
-    }
-
-    /**
-     * Parses a JSON string back into this world. Make sure this is an empty
-     * world before calling this method.
-     */
-    deserialize(data: string): void {
-        if (this.world === null) {
-            throw Error("This configuration does not have a world attached to it. It makes no sense to create cubes here.")
-        }
-        let obj: any = JSON.parse(data);
-
-        const version = obj['_version'];
-        if (version > 1) {
-            throw new Error('Save file with incorrect version');
-        }
-
-        let cubes: any[] = obj['cubes'];
-        cubes.forEach((cube: any) => {
-            let color = Color.BLUE;
-            if (cube.hasOwnProperty('color')) {
-                color = new Color(cube['color'][0],
-                    cube['color'][1], cube['color'][2]);
-            }
-            this.addCube(new Cube(this.world, [cube['x'], cube['y'], cube['z']], color));
-        });
-    }
 }
 
 export { Configuration };

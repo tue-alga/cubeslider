@@ -260,7 +260,11 @@ class CubeSlider {
 		this.app.ticker.add((delta) => {
 			let cursorPixi: [number, number, number] = [this.world.phantomCube.position.x, this.world.phantomCube.position.y, this.world.phantomCube.z];
 			let cursorWorld = World.pixiToWorldCoords(cursorPixi);
-			this.cursorPositionLabel.setCoords(cursorWorld);
+			if (this.world.phantomCube.visible) {
+				this.cursorPositionLabel.setCoords(cursorWorld);
+			} else {
+				this.cursorPositionLabel.setCoords([0, 0, 0]);
+			}
 			this.renderFrame(delta);
 		});
 
@@ -336,11 +340,6 @@ class CubeSlider {
 				this.ctrlHeld = false;
 			}
 		});*/
-
-		this.update();
-	}
-
-	update(): void {
 	}
 
 	select(Cube: Cube): void {
@@ -650,7 +649,7 @@ class CubeSlider {
 	}
 
 	save(): void {
-		const file = this.world.configuration.serialize();
+		const file = this.world.serialize();
 		const dialogs = document.getElementById('saveDialog');
 		dialogs!.style.display = 'block';
 		this.textArea.value = file;
@@ -659,7 +658,7 @@ class CubeSlider {
 	load(data: string): void {
 		const newWorld = new World(this.app);
 		try {
-			newWorld.configuration.deserialize(data);
+			newWorld.deserialize(data);
 		} catch (e) {
 			window.alert('Could not read JSON data: ' + e);
 			return;
@@ -670,7 +669,7 @@ class CubeSlider {
 	}
 
 	ipeExport(): void {
-		const file = this.world.configuration.serialize();
+		const file = this.world.serialize();
 		const dialogs = document.getElementById('ipeDialog');
 		dialogs!.style.display = 'block';
 		//this.ipeArea.value = this.world.toIpe();
