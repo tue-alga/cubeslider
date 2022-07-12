@@ -18,16 +18,16 @@ class CustomAlgorithm extends Algorithm {
 		printStep(`Running custom move sequence`);
 
 		for (let move of sequence) {
-			const square = this.world.getSquare([move[0], move[1], move[2]]);
-			if (!square) {
-				throw new Error("Custom move path tried to move a non-existing square at " +
+			const cube = this.world.getCube([move[0], move[1], move[2]]);
+			if (!cube) {
+				throw new Error("Custom move path tried to move a non-existing cube at " +
 					`(${move[0]}, ${move[1]}, ${move[2]})`);
 			}
-			if (this.world.hasSquare([move[3], move[4], move[5]])) {
-				throw new Error("Custom move path tried to move a square on top of another square at " +
+			if (this.world.hasCube([move[3], move[4], move[5]])) {
+				throw new Error("Custom move path tried to move a cube on top of another Cube at " +
 					`(${move[3]}, ${move[4]}, ${move[5]})`);
 			}
-			const m = this.world.getMoveTo(square, [move[3], move[4], move[5]]);
+			const m = this.world.getMoveTo(cube, [move[3], move[4], move[5]]);
 			if (m === null) {
 				throw new Error("Custom move path tried to do a move that is invalid in the sliding cube model: " +
 					`(${move[0]}, ${move[1]}, ${move[2]}) \u2192 (${move[3]}, ${move[4]}, ${move[5]})`);

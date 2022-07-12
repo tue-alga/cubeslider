@@ -16,7 +16,7 @@
 			overflow: hidden;
 		}
 
-		#squares-simulator-container {
+		#cubes-simulator-container {
 			position: absolute;
 			left: 0;
 			right: 0;
@@ -25,7 +25,7 @@
 			transition: right .5s;
 		}
 
-		.help-pane-open #squares-simulator-container {
+		.help-pane-open #cubes-simulator-container {
 			right: 600px;
 		}
 
@@ -147,8 +147,8 @@
 </head>
 
 <body>
-	<div id="squares-simulator-container">
-		<canvas id="squares-simulator-canvas"></canvas>
+	<div id="cubes-simulator-container">
+		<canvas id="cubes-simulator-canvas"></canvas>
 	</div>
 	<div class="dialogs" id="algorithmDialog">
 		<div class="dialog slim" id="algorithmDialogContainer"></div>
@@ -206,22 +206,22 @@
 			Help
 		</div>
 		<div class="dialog-content">
-			<p>This is the web-based interface for <i>SquareSlider</i>, a framework for modular robot reconfiguration in the sliding square model.</p>
+			<p>This is the web-based interface for <i>SquareSlider</i>, a framework for modular robot reconfiguration in the sliding cube model.</p>
 
 			<h2>Building an input configuration</h2>
 			<p>In the lower toolbar the following tools are available for drawing an input configuration:<br>
 				<img src="icons/pan.png">: Pan the canvas around. Click anywhere and drag the canvas to the desired position.<br>
-				<img src="icons/select.png">: Select a square. Click once on a square to select it. Hold the <i>Ctrl</i> key and click to add a square to the selection.<br>
-				<img src="icons/add-square.png">: Click on an empty grid cell to insert a square in that location, and drag to other empty cells to insert squares in those locations as well. Click on an existing square to delete it, and drag to other squares to also delete those squares. The first click determines the mode of the dragging afterwards.<br>
-				<img src="icons/color.png">: Changes the color of the selected square(s) (cycles through six available colors). Colors do not influence the algorithm, but can be helpful to identify where certain parts of the input configuration end up while the algorithm is running.<br>
-				<img src="icons/delete.png">: Deletes the selected square(s).<br>
+				<img src="icons/select.png">: Select a cube. Click once on a cube to select it. Hold the <i>Ctrl</i> key and click to add a cube to the selection.<br>
+				<img src="icons/add-cube.png">: Click on an empty grid cell to insert a cube in that location, and drag to other empty cells to insert cubes in those locations as well. Click on an existing cube to delete it, and drag to other cubes to also delete those cubes. The first click determines the mode of the dragging afterwards.<br>
+				<img src="icons/color.png">: Changes the color of the selected cube(s) (cycles through six available colors). Colors do not influence the algorithm, but can be helpful to identify where certain parts of the input configuration end up while the algorithm is running.<br>
+				<img src="icons/delete.png">: Deletes the selected cube(s).<br>
 				<img src="icons/save.png">: Opens a dialog that allows you to save your configuration to a JSON string, or load a configuration from a JSON string you saved earlier.
 			</p>
 			<h2>Selecting an algorithm</h2>
 			<p>The upper tool shows the selected reconfiguration algorithm. Clicking on the name of the currently selected algorithm opens a drop-down menu to select one of the following algorithms:<br>
 			<b>Gather & Compact</b>: The main algorithm presented in this <a href="https://arxiv.org/abs/2105.07997">paper</a>. It consists of two phases, which can also be executed separately. The resulting configuration is an <i>xy</i>-monotone configuration in the bottom left corner of the bounding box of the configuration at the start.<br>
-			<b>Gather</b>: A reconfiguration algorithm that ensures that almost all squares become part of (roughly) 2-connected components.<br>
-			<b>Compact</b>: A reconfiguration algorithm that pushes squares to the bottom left corner of the bounding box of the configuration, to form an <i>xy</i>-monotone configuration. This algorithm should be preceded by <b>Gather</b> to ensure that it functions as intended. Running <b>Gather&Compact</b> is therefore advised.<br>
+			<b>Gather</b>: A reconfiguration algorithm that ensures that almost all cubes become part of (roughly) 2-connected components.<br>
+			<b>Compact</b>: A reconfiguration algorithm that pushes cubes to the bottom left corner of the bounding box of the configuration, to form an <i>xy</i>-monotone configuration. This algorithm should be preceded by <b>Gather</b> to ensure that it functions as intended. Running <b>Gather&Compact</b> is therefore advised.<br>
 			<b>Custom move sequence</b>: When this reconfiguration algorithm is run, you will be prompted to provide a sequence of moves to be animated. The sequence of moves should be provided in the form of a string, containing a JSON array of the following format: {[x1,y1,x2,y2], ...}.
 			</p>
 
@@ -239,7 +239,7 @@
 
 			<h2>Connectivity</h2>
 			<p>
-				We allow for the visualization of the connectivity information used in our <a href="https://arxiv.org/abs/2105.07997">paper</a>. Firstly, a square has a filled (blue or red) mark if it can perform moves without disconnecting the configuration, while a non-filled mark indicates that moving the square disconnects the configuration (i.e., this square forms a cut vertex in the adjacency graph of the configuration). Secondly, the color and shape of the marks indicates a partitioning of the configuration into (roughly) 2-connected components. Blue square marks indicate squares in a <i>chunk</i>, a variant of a 2-connected component defined in our <a href="https://arxiv.org/abs/2105.07997">paper</a>. Specifically, a chunk is defined by an inclusion-maximal cycle <i>C</i> along with all its degree-1 neighbors and any squares inside <i>C</i>. Red circle marks indicate squares that are not part of a chunk. A special crossed mark shows where components connect to each other.
+				We allow for the visualization of the connectivity information used in our <a href="https://arxiv.org/abs/2105.07997">paper</a>. Firstly, a cube has a filled (blue or red) mark if it can perform moves without disconnecting the configuration, while a non-filled mark indicates that moving the cube disconnects the configuration (i.e., this cube forms a cut vertex in the adjacency graph of the configuration). Secondly, the color and shape of the marks indicates a partitioning of the configuration into (roughly) 2-connected components. Blue cube marks indicate cubes in a <i>chunk</i>, a variant of a 2-connected component defined in our <a href="https://arxiv.org/abs/2105.07997">paper</a>. Specifically, a chunk is defined by an inclusion-maximal cycle <i>C</i> along with all its degree-1 neighbors and any cubes inside <i>C</i>. Red circle marks indicate cubes that are not part of a chunk. A special crossed mark shows where components connect to each other.
 			</p>
 		</div>
 	</div>

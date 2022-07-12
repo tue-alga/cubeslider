@@ -3,8 +3,8 @@ import * as PIXI from 'pixi.js'
 import { CubeSlider } from './cube-slider'
 import { PhaseLabel } from './ui';
 
-const container = document.getElementById('squares-simulator-container')!;
-const canvas = <HTMLCanvasElement>document.getElementById('squares-simulator-canvas');
+const container = document.getElementById('cubes-simulator-container')!;
+const canvas = <HTMLCanvasElement>document.getElementById('cubes-simulator-canvas');
 let app = new PIXI.Application({
 	antialias: true,
 	backgroundColor: 0xffffff,
@@ -25,8 +25,8 @@ PIXI.Loader.shared.add([
 	'icons/reset.png',
 	'icons/pan.png',
 	'icons/select.png',
-	'icons/add-square.png',
-	'icons/remove-square.png',
+	'icons/add-cube.png',
+	'icons/remove-cube.png',
 	'icons/color.png',
 	'icons/delete.png',
 	'icons/save.png',

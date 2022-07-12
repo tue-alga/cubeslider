@@ -41,7 +41,7 @@ enum ComponentStatus {
 	LINK_CUT, LINK_STABLE, CHUNK_CUT, CHUNK_STABLE, CONNECTOR, NONE
 }
 
-class Square {
+class Cube {
 	p: Position;
 	resetPosition: Position;
 	color: Color;
@@ -101,7 +101,7 @@ class Square {
 		let newCubePosition: Position = [
 			this.p[0] + p[0], this.p[1] + p[1], this.p[2] + p[2]];
 		shield.on("pointerover", () => {
-			if (this.world.modifyingCubes && !this.world.hasSquare(newCubePosition)) {
+			if (this.world.modifyingCubes && !this.world.hasCube(newCubePosition)) {
 				this.world.showPhantomCube(newCubePosition);
 			}
 		});
@@ -111,11 +111,11 @@ class Square {
 		shield.on("pointerdown", (event: InteractionEvent) => {
 			if (this.world.modifyingCubes) {
 				// primary button (0) adds cubes, secondary button (2) removes cubes 
-				if (event.data.button == 0 && !this.world.hasSquare(newCubePosition)) {
+				if (event.data.button == 0 && !this.world.hasCube(newCubePosition)) {
 					this.world.hidePhantomCube();
-					this.world.addSquare(new Square(this.world, newCubePosition, this.color));
+					this.world.addCube(new Cube(this.world, newCubePosition, this.color));
 				} else if (event.data.button == 2) {
-					this.world.removeSquare(this);
+					this.world.removeCube(this);
 				}
 			}
 		});
@@ -154,10 +154,12 @@ class Square {
 		if (move) {
 			[x, y, z] = move.interpolate(time - timeStep + 1);
 		}
-
-		this.pixi.x = x;
-		this.pixi.z = -y;
-		this.pixi.y = z;
+	
+		let pixiCoords = World.worldToPixiCoords(this.p);
+		
+		this.pixi.x = pixiCoords[0];
+		this.pixi.y = pixiCoords[1];
+		this.pixi.z = pixiCoords[2];
 	}
 
 	setColor(color: Color): void {
@@ -194,4 +196,4 @@ class Square {
 	}
 }
 
-export { Square, Color, ComponentStatus, Position };
+export { Cube, Color, ComponentStatus, Position };

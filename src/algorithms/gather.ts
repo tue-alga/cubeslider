@@ -1,5 +1,5 @@
 import { MoveGenerator, World, Move} from '../world';
-import {Square, ComponentStatus, Position} from '../square';
+import {Cube, ComponentStatus, Position} from '../cube';
 import { Vector } from '../vector';
 import { Algorithm } from './algorithm';
 
@@ -13,60 +13,60 @@ class GatherAlgorithm extends Algorithm {
         printStep('Gathering');
         const limit = this.world.boundingBoxSpan();
         
-        const root = this.world.squares[0];
+        const root = this.world.cubes[0];
         
-        let lightSquare = this.findLightSquare(limit, root);
-        while (!this.world.isXYZMonotone() && lightSquare !== null) {
-            printMiniStep(`Gathering light square (${lightSquare.p[0]}, ${lightSquare.p[1]}, ${lightSquare.p[2]})`)
+        let lightCube = this.findLightCube(limit, root);
+        while (!this.world.isXYZMonotone() && lightCube !== null) {
+            printMiniStep(`Gathering light Cube (${lightCube.p[0]}, ${lightCube.p[1]}, ${lightCube.p[2]})`)
             
-            const target = this.findGatherTarget(lightSquare);
-            const leaf = this.findLeafInDescendants(lightSquare, root);
+            const target = this.findGatherTarget(lightCube);
+            const leaf = this.findLeafInDescendants(lightCube, root);
             if (leaf === null) {
                 break;
             }
 
-            yield* this.walkBoundaryUntil(leaf, target);
+            yield* this.walkBoundaryUntil(leaf, lightCube, target);
 
-            lightSquare = this.findLightSquare(limit, root);
+            lightCube = this.findLightCube(limit, root);
         }
     }
 
     /**
-     * Finds a light square closest to the first square in the squares array, 
-     * or null if there are no light squares in the configuration
+     * Finds a light Cube closest to the first Cube in the Cubes array, 
+     * or null if there are no light Cubes in the configuration
      */
-    findLightSquare(limit: number, r: Square): Square | null {
-        let heaviestLightSquare = null;
-        let heaviestLightSquareCapacity = 0;
+    findLightCube(limit: number, r: Cube): Cube | null {
+        let heaviestLightCube = null;
+        let heaviestLightCubeCapacity = 0;
         
-        for (let i = 0; i < this.world.squares.length; i++) {
-            const square = this.world.squares[i];
-            if (square.componentStatus === ComponentStatus.CONNECTOR || 
-                    square.componentStatus === ComponentStatus.LINK_CUT) {
-                const capacity = this.world.capacity(square, r);
-                if (capacity < limit && capacity > heaviestLightSquareCapacity) {
-                    heaviestLightSquareCapacity = capacity;
-                    heaviestLightSquare = square;
+        for (let i = 0; i < this.world.cubes.length; i++) {
+            const cube = this.world.cubes[i];
+            if (cube.componentStatus === ComponentStatus.CONNECTOR || 
+                    cube.componentStatus === ComponentStatus.LINK_CUT) {
+                const capacity = this.world.capacity(cube, r);
+                if (capacity < limit && capacity > heaviestLightCubeCapacity) {
+                    heaviestLightCubeCapacity = capacity;
+                    heaviestLightCube = cube;
                 }
             }
         }
         
-        return heaviestLightSquare;
+        return heaviestLightCube;
     }
 
     /**
-     * Given a light square s, returns a neighboring empty cell n of s such that the following holds:
+     * Given a light Cube s, returns a neighboring empty cell n of s such that the following holds:
      * 
-     * * n is a diagonal neighbor of s, and the two cells neighboring both n and s are filled by squares
+     * * n is a diagonal neighbor of s, and the two cells neighboring both n and s are filled by Cubes
      *  or else
      * * n is a direct neighbor of s
      */
-    findGatherTarget(s: Square) : Position {
+    findGatherTarget(s: Cube) : Position {
         // first check all corners
         const has = this.world.hasNeighbors([s.p[0], s.p[1], s.p[2]]);
         let [x, y, z] = s.p;
         
-        // All z-1 positions are evaluated last, since this might make the square dip below the
+        // All z-1 positions are evaluated last, since this might make the Cube dip below the
         // guideline plane. This is undesired for visual reasons.
         if (has['x'] && has['y']) return [x - 1, y - 1, z];
         if (has['x'] && has['Y']) return [x - 1, y + 1, z];
@@ -85,37 +85,48 @@ class GatherAlgorithm extends Algorithm {
         if (has['x'] || has['X'] || has['y'] || has['Y']) return [x, y, z - 1];
         if (has['z'] || has['Z']) return [x - 1, y, z];
         
-        // if we end here, there are no neighbors, so the square is disconnected
-        throw Error("Square is disconnected");
+        // if we end here, there are no neighbors, so the Cube is disconnected
+        throw Error("Cube is disconnected");
     }
 
     /**
-     * Given a light square s and a root r, return a square from the descendants of s, not
+     * Given a light Cube s and a root r, return a Cube from the descendants of s, not
      * edge-adjacent to s itself, that can be safely removed to chunkify s.
      */
-    findLeafInDescendants(s: Square, r: Square): Square | null {
-        // do a bfs from the root to see which squares are on the other side of s
-        // do a BFS from the root, counting the squares, but disregard s
+    findLeafInDescendants(s: Cube, r: Cube): Cube | null {
+        // do a bfs from the root to see which Cubes are on the other side of s
+        // do a BFS from the root, counting the Cubes, but disregard s
         
-        const capacitySquares = this.world.capacitySquares(s, r);
-        for (let i = 0; i < capacitySquares.length; i++) {
-            // only check squares that contribute to the capacity of s
-            if (!capacitySquares[i]) continue;
+        const capacityCubes = this.world.capacityCubes(s, r);
+        for (let i = 0; i < capacityCubes.length; i++) {
+            // only check Cubes that contribute to the capacity of s
+            if (!capacityCubes[i]) continue;
             
-            // if the configuration is still connected without this square, we can safely remove it
-            if (this.world.isConnected(this.world.squares[i].p)) {
-                return this.world.squares[i];
+            // if the configuration is still connected without this Cube, we can safely remove it
+            if (this.world.isConnected(this.world.cubes[i].p)) {
+                return this.world.cubes[i];
             }
         }
         return null;
     }
 
     /**
-     * Runs a series of moves to walk a square s over the boundary of
-     * the configuration to end up at the given empty target cell,
-     * in such a way that it does not pass the origin.
+     * Runs a series of moves to walk a leaf Cube s over the boundary of
+     * the configuration to end up at the given empty target cell.
+     * It tries to find a shortest path over only the Cubes
+     * contributing to the capacity of the corresponding light Cube l.
+     * One of three situations might occure:
+     * * This path exists and is also valid when considering the complete configuration:
+     *      In this case, just follow this path
+     * * This path exists, but is not valid when considering the complete configuration:
+     *      The path is blocked by a cube not in the capacity of l.
+     *      Just move as far along the path as possible.
+     *      This closes a cycle that contains l, which makes l not light anymore.
+     * * This path does not exist.
+     *      In this case, leaf Cube s is blocked by its own ancestors.
+     *      Move s to a position that closes a cycle, such that we can make progress.
      */
-    *walkBoundaryUntil(s: Square, target: [number, number, number]): MoveGenerator {
+    *walkBoundaryUntil(s: Cube, l: Cube, target: [number, number, number]): MoveGenerator {        
         try {
             yield* this.world.shortestMovePath(s.p, target);
         } catch (e) {

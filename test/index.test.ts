@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { Square } from "../src/square";
+import { Cube } from "../src/cube";
 
 describe("Direction", function () {
     it("bounces correctly on the positive diagonal", function () {

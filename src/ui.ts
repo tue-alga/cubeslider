@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js';
-import { Color } from './square';
+import { Color } from './cube';
 import { Constants } from './cube-slider';
 
 abstract class Component {
@@ -501,7 +501,7 @@ class PhaseLabel extends Component {
 class Label extends Component {
 
 	label = new PIXI.Text("", Constants.subPhaseLabelStyle);
-
+	
 	constructor(public text: string) {
 		super();
 		this.rebuildPixi();
@@ -527,4 +527,67 @@ class Label extends Component {
 	}
 }
 
-export { IconButton, IconColorButton, TextButton, Label, Separator, Toolbar, StepCountLabel, PhaseLabel };
+class CoordinateLabel extends Component {
+	
+	readonly initialText = "-10";
+	
+	labelX = new PIXI.Text(this.initialText, Constants.subPhaseLabelStyle);
+	labelComma1 = new PIXI.Text(", ", Constants.subPhaseLabelStyle);
+	labelY = new PIXI.Text(this.initialText, Constants.subPhaseLabelStyle);
+	labelComma2 = new PIXI.Text(", ", Constants.subPhaseLabelStyle);
+	labelZ = new PIXI.Text(this.initialText, Constants.subPhaseLabelStyle);
+	
+	labels = [this.labelX, this.labelComma1, this.labelY, this.labelComma2, this.labelZ];
+	
+	readonly maxCoordinateWidth = PIXI.TextMetrics.measureText(this.initialText, Constants.subPhaseLabelStyle).width;
+	readonly commaWidth = PIXI.TextMetrics.measureText(", ", Constants.subPhaseLabelStyle).width;
+	
+	constructor(public x: number, public y: number, public z: number) {
+		super();
+		this.setCoords([x, y, z]);
+	}
+
+	getHeight(): number {
+		return Button.BUTTON_HEIGHT;
+	}
+
+	rebuildPixi(): void {
+		this.pixi.removeChildren();
+		
+		this.labels.forEach(l => {
+			l.anchor.set(0, 0.5)
+			l.y = this.getHeight() / 2;
+		});
+		
+		// used to right allign the numbers
+		let labelXWidth = PIXI.TextMetrics.measureText(this.labelX.text, Constants.subPhaseLabelStyle).width;
+		let labelYWidth = PIXI.TextMetrics.measureText(this.labelY.text, Constants.subPhaseLabelStyle).width;
+		let labelZWidth = PIXI.TextMetrics.measureText(this.labelZ.text, Constants.subPhaseLabelStyle).width;
+		
+		this.labelX.x = 0 + (this.maxCoordinateWidth - labelXWidth);
+		this.labelComma1.x = this.maxCoordinateWidth;
+		this.labelY.x= this.maxCoordinateWidth + this.commaWidth + (this.maxCoordinateWidth - labelYWidth);
+		this.labelComma2.x= 2 * this.maxCoordinateWidth + this.commaWidth;
+		this.labelZ.x= 2 * this.maxCoordinateWidth + 2 * this.commaWidth + (this.maxCoordinateWidth - labelZWidth);
+		
+		this.pixi.addChild(this.labelX);
+		this.pixi.addChild(this.labelComma1);
+		this.pixi.addChild(this.labelY);
+		this.pixi.addChild(this.labelComma2);
+		this.pixi.addChild(this.labelZ);
+	}
+
+	getWidth(): number {
+		return 3 * this.maxCoordinateWidth + 2 * this.commaWidth;
+	}
+	
+	setCoords(p: [number, number, number]) {
+		this.labelX.text = p[0].toString();
+		this.labelY.text = p[1].toString();
+		this.labelZ.text = p[2].toString();
+		this.rebuildPixi();
+	}
+
+}
+
+export { IconButton, IconColorButton, TextButton, Label, CoordinateLabel, Separator, Toolbar, StepCountLabel, PhaseLabel };

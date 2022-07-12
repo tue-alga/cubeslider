@@ -3,14 +3,14 @@ import {InteractionEvent} from 'pixi.js';
 import * as PIXI3D from 'pixi3d';
 import {MaterialRenderSortType} from 'pixi3d';
 
-import {Color, ComponentStatus, Position, Square} from './square';
+import {Color, ComponentStatus, Position, Cube} from './cube';
 
 /**
  * A single cell in the grid. Contains either a cube (with the ID stored) or
  * nothing (\c null).
  */
 type WorldCell = {
-	squareId: number | null;
+	CubeId: number | null;
 };
 
 /**
@@ -96,7 +96,7 @@ class Move {
 	 * This avoids the need to do a BFS to check connectivity.
 	 */
 	isValidIgnoreConnectivity(): boolean {
-		if (this.world.getSquare(this.targetPosition())) {
+		if (this.world.getCube(this.targetPosition())) {
 			return false;
 		}
 
@@ -146,9 +146,9 @@ class Move {
 					(has['Y'] && has['YZ'])
 				);
 			default:
-				// for corner moves, need to ensure that there is no square in
+				// for corner moves, need to ensure that there is no Cube in
 				// the first direction (which would be in our way) and there
-				// is a square in the second direction (that we can pivot along)
+				// is a Cube in the second direction (that we can pivot along)
 				return !has[this.direction[0]] && has[this.direction[1]];
 		}
 	}
@@ -167,7 +167,7 @@ class Move {
 	}
 
 	/**
-	 * Computes coordinates of a square executing this move at the given time
+	 * Computes coordinates of a Cube executing this move at the given time
 	 * between 0 and 1.
 	 */
 	interpolate(time: number): Position {
@@ -197,13 +197,13 @@ class Move {
 	}
 
 	execute(): void {
-		const square = this.world.getSquare(this.position);
-		if (!square) {
-			throw new Error(`Tried to move non-existing square ` +
+		const cube = this.world.getCube(this.position);
+		if (!cube) {
+			throw new Error(`Tried to move non-existing Cube ` +
 				`at (${this.position[0]}, ${this.position[1]})`);
 		}
 
-		this.world.moveSquare(square, this.targetPosition());
+		this.world.moveCube(cube, this.targetPosition());
 	}
 
 	toString(): string {
@@ -214,13 +214,13 @@ class Move {
 }
 
 /**
- * Collection of squares on the grid.
+ * Collection of Cubes on the grid.
  */
 class World {
 
 	world: WorldCell[][][] = [];
 	pixi = new PIXI3D.Container3D();
-	squares: Square[] = [];
+	cubes: Cube[] = [];
 	currentMove: Move | null = null;
 	showComponentMarks = false;
 
@@ -268,9 +268,10 @@ class World {
 			let row: PIXI3D.Mesh3D[] = [];
 			for (let y = -10; y < 10; y++) {
 				let tile = this.pixi.addChild(PIXI3D.Mesh3D.createPlane());
-				tile.position.x = x;
-				tile.position.z = -y;
-				tile.position.y = -0.5;
+				let pixiCoords = World.worldToPixiCoords([x, y, -0.5]);
+				tile.position.x = pixiCoords[0];
+				tile.position.y = pixiCoords[1];
+				tile.position.z = pixiCoords[2];
 				tile.scale.set(0.5);
 				row.push(tile);
 				if ((x + y) % 2 == 0) {
@@ -282,7 +283,7 @@ class World {
 				tile.hitArea = new PIXI3D.PickingHitArea(undefined, tile);
 				let newCubePosition: Position = [x, y, 0];
 				tile.on("pointerover", () => {
-					if (this.modifyingCubes && !this.hasSquare(newCubePosition)) {
+					if (this.modifyingCubes && !this.hasCube(newCubePosition)) {
 						this.showPhantomCube(newCubePosition);
 					}
 				});
@@ -290,9 +291,9 @@ class World {
 					this.hidePhantomCube();
 				});
 				tile.on("pointerdown", (event: InteractionEvent) => {
-					if (event.data.button == 0 && this.modifyingCubes && !this.hasSquare(newCubePosition)) {
+					if (event.data.button == 0 && this.modifyingCubes && !this.hasCube(newCubePosition)) {
 						this.hidePhantomCube();
-						this.addSquare(new Square(this, newCubePosition, Color.GRAY));
+						this.addCube(new Cube(this, newCubePosition, Color.GRAY));
 					}
 				});
 				this.pipeline.enableShadows(tile, this.shadowLight);
@@ -300,39 +301,55 @@ class World {
 			this.ground.push(row);
 		}
 
-		let axisWidth = 0.1;
-		let axisHeight = 2;
 		
-		let zAxisMaterial = new PIXI3D.StandardMaterial();
-		zAxisMaterial.baseColor = new PIXI3D.Color(0, 0, 1);
-		let zAxis = this.pixi.addChild(PIXI3D.Mesh3D.createCube());
-		zAxis.position.x = 0;
-		zAxis.position.y = axisHeight;
-		zAxis.position.z = 0;
-		zAxis.scale.set(axisWidth, axisHeight, axisWidth);
-		zAxis.material = zAxisMaterial;
-		zAxis.interactive = false;
-
-
-		let xAxisMaterial = new PIXI3D.StandardMaterial();
-		xAxisMaterial.baseColor = new PIXI3D.Color(1, 0, 0);
-		let xAxis = this.pixi.addChild(PIXI3D.Mesh3D.createCube());
-		xAxis.position.x = axisHeight;
-		xAxis.position.y = 0;
-		xAxis.position.z = 0;
-		xAxis.scale.set(axisHeight, axisWidth, axisWidth);
-		xAxis.material = xAxisMaterial;
-		xAxis.interactive = false;
-
-		let yAxisMaterial = new PIXI3D.StandardMaterial();
-		yAxisMaterial.baseColor = new PIXI3D.Color(0, 1, 0);
-		let yAxis = this.pixi.addChild(PIXI3D.Mesh3D.createCube());
-		yAxis.position.x = 0;
-		yAxis.position.y = 0;
-		yAxis.position.z = -axisHeight;
-		yAxis.scale.set(axisWidth, axisWidth, axisHeight);
-		yAxis.material = yAxisMaterial;
-		yAxis.interactive = false;
+		// show 2 axis.
+		// One transparent in front of everything (depthTest = false)
+		// One opaque
+		let axisWidth = 0.1;
+		let axisHeight = 6;
+		let axisScale = axisHeight / 2;
+		
+		for (let i = 0; i < 3; i++) {
+			let axisMaterialTransparent = new PIXI3D.StandardMaterial();
+			axisMaterialTransparent.alphaMode = PIXI3D.StandardMaterialAlphaMode.blend
+			axisMaterialTransparent.renderSortType = PIXI3D.MaterialRenderSortType.transparent;
+			axisMaterialTransparent.state.depthTest = false;
+			
+			let axisMaterialOpaque = new PIXI3D.StandardMaterial();
+			
+			let axisTransparent = this.pixi.addChild(PIXI3D.Mesh3D.createCube());
+			let axisOpaque = this.pixi.addChild(PIXI3D.Mesh3D.createCube());
+			switch (i) {
+				case 0:
+					axisTransparent.position.x = axisScale;
+					axisOpaque.position.x = axisScale;
+					axisTransparent.scale.set(axisScale, axisWidth, axisWidth);
+					axisOpaque.scale.set(axisScale, axisWidth, axisWidth);
+					axisMaterialTransparent.baseColor = new PIXI3D.Color(1, 0, 0, 0.2);
+					axisMaterialOpaque.baseColor = new PIXI3D.Color(1, 0, 0);
+					break;
+				case 1:
+					axisTransparent.position.z = -axisScale;
+					axisOpaque.position.z = -axisScale;
+					axisTransparent.scale.set(axisWidth, axisWidth, axisScale);
+					axisOpaque.scale.set(axisWidth, axisWidth, axisScale);
+					axisMaterialTransparent.baseColor = new PIXI3D.Color(0, 1, 0, 0.2);
+					axisMaterialOpaque.baseColor = new PIXI3D.Color(0, 1, 0);
+					break;
+				case 2:
+					axisTransparent.position.y = axisScale;
+					axisOpaque.position.y = axisScale;
+					axisTransparent.scale.set(axisWidth, axisScale, axisWidth);
+					axisOpaque.scale.set(axisWidth, axisScale, axisWidth);
+					axisMaterialTransparent.baseColor = new PIXI3D.Color(0, 0, 1, 0.2);
+					axisMaterialOpaque.baseColor = new PIXI3D.Color(0, 0, 1);
+					break;
+			}
+			axisTransparent.material = axisMaterialTransparent;
+			axisOpaque.material = axisMaterialOpaque;
+			axisTransparent.interactive = false;
+			axisOpaque.interactive = false;
+		}
 		
 
 		// phantom cube for showing where a new cube will be added
@@ -342,6 +359,7 @@ class World {
 		material.metallic = 0.3;
 		material.roughness = 0.5;
 		material.alphaMode = PIXI3D.StandardMaterialAlphaMode.blend;
+		material.renderSortType = PIXI3D.MaterialRenderSortType.transparent;
 		// @ts-ignore
 		this.phantomCube = PIXI3D.Model.from(PIXI.Loader.shared.resources["cube.gltf"]['gltf']).meshes[0];
 		this.phantomCube.material = material;
@@ -349,10 +367,19 @@ class World {
 		this.pixi.addChild(this.phantomCube);
 	}
 
+	static pixiToWorldCoords(p: [number, number, number]) : [number, number, number] {
+		return [p[0], -p[2], p[1]];
+	}
+	
+	static worldToPixiCoords(p: [number, number, number]) : [number, number, number] {
+		return [p[0], p[2], -p[1]];
+	}
+	
 	showPhantomCube([x, y, z]: Position): void {
 		this.pixi.removeChild(this.phantomCube);
 		this.pixi.addChild(this.phantomCube);
-		this.phantomCube.position.set(x, z, -y);
+		let pixiCoords = World.worldToPixiCoords([x, y, z]);
+		this.phantomCube.position.set(pixiCoords[0], pixiCoords[1], pixiCoords[2]);
 		this.phantomCube.visible = true;
 	}
 
@@ -372,131 +399,131 @@ class World {
 		}
 		if (!this.world[x][y][z]) {
 			this.world[x][y][z] = {
-				squareId: null
+				CubeId: null
 			};
 		}
 		return this.world[x][y][z];
 	}
 
 	/**
-	 * Returns the ID of the square at the given location, or null if that cell is empty.
+	 * Returns the ID of the Cube at the given location, or null if that cell is empty.
 	 */
-	private getSquareId(p: Position): number | null {
-		return this.getCell(p).squareId;
+	private getCubeId(p: Position): number | null {
+		return this.getCell(p).CubeId;
 	}
 
 	/**
-	 * Returns the square at the given location, or null if that cell is empty.
+	 * Returns the Cube at the given location, or null if that cell is empty.
 	 */
-	getSquare(p: Position): Square | null {
-		const id = this.getSquareId(p);
+	getCube(p: Position): Cube | null {
+		const id = this.getCubeId(p);
 		if (id === null) {
 			return null;
 		}
-		return this.squares[id];
+		return this.cubes[id];
 	}
 
 	/**
-	 * Checks if a square exists at the given location.
+	 * Checks if a Cube exists at the given location.
 	 */
-	hasSquare(p: Position): boolean {
-		return !!this.getSquare(p);
+	hasCube(p: Position): boolean {
+		return !!this.getCube(p);
 	}
 
 	/**
-	 * Adds a square to the world; throws if a square already exists at that
+	 * Adds a Cube to the world; throws if a Cube already exists at that
 	 * location.
 	 */
-	addSquare(square: Square): void {
-		this.addSquareUnmarked(square);
+	addCube(Cube: Cube): void {
+		this.addCubeUnmarked(Cube);
 		this.markComponents();
 	}
 
 	/**
-	 * As addSquare(), but does not update the component status of the squares.
+	 * As addCube(), but does not update the component status of the Cubes.
 	 */
-	addSquareUnmarked(square: Square): void {
-		if (this.hasSquare(square.p)) {
-			throw new Error(`Tried to insert square on top of another square ` +
-				`at (${square.p})`);
+	addCubeUnmarked(Cube: Cube): void {
+		if (this.hasCube(Cube.p)) {
+			throw new Error(`Tried to insert Cube on top of another Cube ` +
+				`at (${Cube.p})`);
 		}
-		this.getCell(square.p).squareId = this.squares.length;
-		this.squares.push(square);
-		this.pixi.addChild(square.pixi);
-		this.pipeline.enableShadows(square.mesh);
+		this.getCell(Cube.p).CubeId = this.cubes.length;
+		this.cubes.push(Cube);
+		this.pixi.addChild(Cube.pixi);
+		this.pipeline.enableShadows(Cube.mesh);
 	}
 
 	/**
-	 * Moves the given square from its current location to the given target
-	 * location. Throws if a square already exists at the target.
+	 * Moves the given Cube from its current location to the given target
+	 * location. Throws if a Cube already exists at the target.
 	 */
-	moveSquare(square: Square, to: Position): void {
-		this.moveSquareUnmarked(square, to);
+	moveCube(Cube: Cube, to: Position): void {
+		this.moveCubeUnmarked(Cube, to);
 		this.markComponents();
 	}
 
 	/**
-	 * As moveSquare(), but does not update the component status of the squares.
+	 * As moveCube(), but does not update the component status of the Cubes.
 	 */
-	moveSquareUnmarked(square: Square, to: Position): void {
-		if (this.hasSquare(to)) {
-			throw new Error(`Tried to move square on top of another square ` +
+	moveCubeUnmarked(Cube: Cube, to: Position): void {
+		if (this.hasCube(to)) {
+			throw new Error(`Tried to move Cube on top of another Cube ` +
 				`at (${to})`);
 		}
 
-		const id = this.getSquareId(square.p)!;
-		this.getCell(square.p).squareId = null;
-		this.getCell(to).squareId = id;
-		square.p = [...to];
-		square.updatePosition(0, 0);
+		const id = this.getCubeId(Cube.p)!;
+		this.getCell(Cube.p).CubeId = null;
+		this.getCell(to).CubeId = id;
+		Cube.p = [...to];
+		Cube.updatePosition(0, 0);
 	}
 
 	/**
-	 * Removes the square at the given location.
+	 * Removes the Cube at the given location.
 	 */
-	removeSquare(square: Square): void {
-		this.removeSquareUnmarked(square);
+	removeCube(Cube: Cube): void {
+		this.removeCubeUnmarked(Cube);
 		this.markComponents();
 	}
 
 	/**
-	 * As removeSquare(), but does not update the component status of the squares.
+	 * As removeCube(), but does not update the component status of the Cubes.
 	 */
-	removeSquareUnmarked(square: Square): void {
-		this.getCell(square.p).squareId = null;
-		this.pixi.removeChild(square.pixi);
-		this.squares = this.squares.filter((b) => b !== square);
-		// because removing the square from this.squares changes the indices, we
-		// need to update the squareIds as well
-		for (let i = 0; i < this.squares.length; i++) {
-			this.getCell(this.squares[i].p).squareId = i;
+	removeCubeUnmarked(Cube: Cube): void {
+		this.getCell(Cube.p).CubeId = null;
+		this.pixi.removeChild(Cube.pixi);
+		this.cubes = this.cubes.filter((b) => b !== Cube);
+		// because removing the Cube from this.Cubes changes the indices, we
+		// need to update the CubeIds as well
+		for (let i = 0; i < this.cubes.length; i++) {
+			this.getCell(this.cubes[i].p).CubeId = i;
 		}
 	}
 
 	/**
-	 * Updates the positions of all squares in the visualization.
+	 * Updates the positions of all Cubes in the visualization.
 	 */
 	updatePositions(time: number, timeStep: number): void {
-		this.squares.forEach((square) => {
-			square.updatePosition(time, timeStep);
+		this.cubes.forEach((Cube) => {
+			Cube.updatePosition(time, timeStep);
 		});
 		if (this.currentMove) {
 			const p = this.currentMove.position;
-			this.getSquare(p)?.updatePosition(time, timeStep, this.currentMove);
+			this.getCube(p)?.updatePosition(time, timeStep, this.currentMove);
 		}
 	}
 
 	/**
-	 * Puts all squares back in their starting location.
+	 * Puts all Cubes back in their starting location.
 	 */
 	reset(): void {
-		this.squares.forEach((square) => {
-			this.getCell(square.p).squareId = null;
+		this.cubes.forEach((Cube) => {
+			this.getCell(Cube.p).CubeId = null;
 		});
-		for (let i = 0; i < this.squares.length; i++) {
-			const square = this.squares[i];
-			square.p = [...square.resetPosition];
-			this.getCell(square.p).squareId = i;
+		for (let i = 0; i < this.cubes.length; i++) {
+			const cube = this.cubes[i];
+			cube.p = [...cube.resetPosition];
+			this.getCell(cube.p).CubeId = i;
 		}
 		this.currentMove = null;
 		this.markComponents();
@@ -504,56 +531,56 @@ class World {
 
 	/**
 	 * Returns an object with keys 'x', 'X', 'y', etc. with booleans
-	 * indicating if the given cell has neighboring squares in that direction.
+	 * indicating if the given cell has neighboring Cubes in that direction.
 	 */
 	hasNeighbors([x, y, z]: Position): { [key: string]: boolean } {
 		let has: { [key: string]: boolean } = {};
-		has['x'] = this.hasSquare([x - 1, y, z]);
-		has['X'] = this.hasSquare([x + 1, y, z]);
-		has['y'] = this.hasSquare([x, y - 1, z]);
-		has['Y'] = this.hasSquare([x, y + 1, z]);
-		has['z'] = this.hasSquare([x, y, z - 1]);
-		has['Z'] = this.hasSquare([x, y, z + 1]);
-		has['xy'] = this.hasSquare([x - 1, y - 1, z]);
-		has['xY'] = this.hasSquare([x - 1, y + 1, z]);
-		has['xz'] = this.hasSquare([x - 1, y, z - 1]);
-		has['xZ'] = this.hasSquare([x - 1, y, z + 1]);
-		has['Xy'] = this.hasSquare([x + 1, y - 1, z]);
-		has['XY'] = this.hasSquare([x + 1, y + 1, z]);
-		has['Xz'] = this.hasSquare([x + 1, y, z - 1]);
-		has['XZ'] = this.hasSquare([x + 1, y, z + 1]);
-		has['yz'] = this.hasSquare([x, y - 1, z - 1]);
-		has['yZ'] = this.hasSquare([x, y - 1, z + 1]);
-		has['Yz'] = this.hasSquare([x, y + 1, z - 1]);
-		has['YZ'] = this.hasSquare([x, y + 1, z + 1]);
+		has['x'] = this.hasCube([x - 1, y, z]);
+		has['X'] = this.hasCube([x + 1, y, z]);
+		has['y'] = this.hasCube([x, y - 1, z]);
+		has['Y'] = this.hasCube([x, y + 1, z]);
+		has['z'] = this.hasCube([x, y, z - 1]);
+		has['Z'] = this.hasCube([x, y, z + 1]);
+		has['xy'] = this.hasCube([x - 1, y - 1, z]);
+		has['xY'] = this.hasCube([x - 1, y + 1, z]);
+		has['xz'] = this.hasCube([x - 1, y, z - 1]);
+		has['xZ'] = this.hasCube([x - 1, y, z + 1]);
+		has['Xy'] = this.hasCube([x + 1, y - 1, z]);
+		has['XY'] = this.hasCube([x + 1, y + 1, z]);
+		has['Xz'] = this.hasCube([x + 1, y, z - 1]);
+		has['XZ'] = this.hasCube([x + 1, y, z + 1]);
+		has['yz'] = this.hasCube([x, y - 1, z - 1]);
+		has['yZ'] = this.hasCube([x, y - 1, z + 1]);
+		has['Yz'] = this.hasCube([x, y + 1, z - 1]);
+		has['YZ'] = this.hasCube([x, y + 1, z + 1]);
 		return has;
 	}
 
 	/**
 	 * Returns a neighbor of the give cube
 	 */
-	getOneNeighbor(cube: Square): Square | null {
+	getOneNeighbor(cube: Cube): Cube | null {
 		const [x, y, z] = cube.p;
-		let neighbor = this.getSquare([x + 1, y, z]);
+		let neighbor = this.getCube([x + 1, y, z]);
 		if (neighbor) return neighbor;
-		neighbor = this.getSquare([x - 1, y, z]);
+		neighbor = this.getCube([x - 1, y, z]);
 		if (neighbor) return neighbor;
-		neighbor = this.getSquare([x, y + 1, z]);
+		neighbor = this.getCube([x, y + 1, z]);
 		if (neighbor) return neighbor;
-		neighbor = this.getSquare([x, y - 1, z]);
+		neighbor = this.getCube([x, y - 1, z]);
 		if (neighbor) return neighbor;
-		neighbor = this.getSquare([x, y, z + 1]);
+		neighbor = this.getCube([x, y, z + 1]);
 		if (neighbor) return neighbor;
-		neighbor = this.getSquare([x, y, z - 1]);
+		neighbor = this.getCube([x, y, z - 1]);
 		if (neighbor) return neighbor;
 		return null;
 	}
 
 	/**
-	 * Given a square, returns a list of all the moves starting at that square that
+	 * Given a Cube, returns a list of all the moves starting at that Cube that
 	 * are valid.
 	 *
-	 * If the configuration would be disconnected without the given square, no
+	 * If the configuration would be disconnected without the given Cube, no
 	 * move is valid, so an empty array is returned.
 	 */
 	validMovesFrom(p: Position): Move[] {
@@ -577,7 +604,7 @@ class World {
 	/**
 	 * Returns a move from and to the given coordinates.
 	 */
-	getMoveTo(source: Square, target: Position): Move | null {
+	getMoveTo(source: Cube, target: Position): Move | null {
 		const moves = this.validMovesFrom(source.p);
 		for (let move of moves) {
 			if (move.targetPosition()[0] === target[0] &&
@@ -590,23 +617,23 @@ class World {
 	}
 
 	/**
-	 * Executes the shortest move path between the given squares.
+	 * Executes the shortest move path between the given Cubes.
 	 *
 	 * Throws if no move path is possible.
 	 *
-	 * @param from The source coordinate, containing the square we want to move.
+	 * @param from The source coordinate, containing the Cube we want to move.
 	 * @param to The target coordinate, which should be an empty cell.
 	 */
 	*shortestMovePath(from: Position, to: Position): MoveGenerator {
-		// temporarily remove the origin square from the configuration, to avoid
+		// temporarily remove the origin Cube from the configuration, to avoid
 		// invalid moves in the resulting move path (because we could slide
-		// along the origin square itself)
-		const square = this.getSquare(from);
-		if (square === null) {
-			throw "Cannot compute move path from non-existing square" +
+		// along the origin Cube itself)
+		const cube = this.getCube(from);
+		if (cube === null) {
+			throw "Cannot compute move path from non-existing Cube" +
 			` (${from})`;
 		}
-		this.removeSquareUnmarked(square);
+		this.removeCubeUnmarked(cube);
 
 		// do BFS over the move graph
 		// seen has positions "1,1,1" (strings) as keys
@@ -634,7 +661,7 @@ class World {
 		}
 
 		if (!seen[to[0] + "," + to[1] + "," + to[2]]) {
-			this.addSquare(square);
+			this.addCube(cube);
 			throw "No move path possible from " + from + " to " + to;
 		}
 
@@ -647,8 +674,8 @@ class World {
 			c = move.sourcePosition();
 		}
 
-		// put the origin square back
-		this.addSquare(square);
+		// put the origin Cube back
+		this.addCube(cube);
 
 		yield* path;
 	}
@@ -656,8 +683,8 @@ class World {
 	/**
 	 * Returns the degree of the given cube (in 6-connectivity).
 	 */
-	degree(square: Square): number {
-		const has = this.hasNeighbors(square.p);
+	degree(Cube: Cube): number {
+		const has = this.hasNeighbors(Cube.p);
 		let count = 0;
 		for (let direction of 'xXyYzZ') {
 			if (has[direction]) {
@@ -669,77 +696,77 @@ class World {
 
 	/**
 	 * Checks if the configuration is connected. If the skip parameter is
-	 * provided, that square is ignored (considered as non-existing).
+	 * provided, that Cube is ignored (considered as non-existing).
 	 */
 	isConnected(skip?: Position): boolean {
-		if (!this.squares.length) {
+		if (!this.cubes.length) {
 			return true;
 		}
 
-		// do BFS from square 0 to check if we can reach all squares
-		let seen = Array(this.squares.length).fill(false);
+		// do BFS from Cube 0 to check if we can reach all Cubes
+		let seen = Array(this.cubes.length).fill(false);
 		let seenCount = 0;
 		let queue = [0];
 
 		if (skip) {
-			// mark the skipped square so we won't visit it again
-			const skipIndex = this.getSquareId(skip);
+			// mark the skipped Cube so we won't visit it again
+			const skipIndex = this.getCubeId(skip);
 			if (skipIndex !== null) {
 				seen[skipIndex] = true;
 				seenCount++;
 
 				// special case: if we were about to start our BFS with the
-				// skipped square, then pick another square to start with
-				// (note that if the configuration has exactly 1 square, which
+				// skipped Cube, then pick another Cube to start with
+				// (note that if the configuration has exactly 1 Cube, which
 				// is then skipped, the function should return true
 				// but that works because the BFS starting at the skipped
-				// square will not encounter any squares)
-				if (skipIndex === 0 && this.squares.length > 1) {
+				// Cube will not encounter any Cubes)
+				if (skipIndex === 0 && this.cubes.length > 1) {
 					queue = [1];
 				}
 			}
 		}
 
 		while (queue.length !== 0) {
-			const squareId = queue.shift()!;
-			if (seen[squareId]) {
+			const cubeId = queue.shift()!;
+			if (seen[cubeId]) {
 				continue;
 			}
 
-			const square = this.squares[squareId];
-			seen[squareId] = true;
+			const cube = this.cubes[cubeId];
+			seen[cubeId] = true;
 			seenCount++;
 
 			const neighbors = [
-				this.getCell([square.p[0] - 1, square.p[1], square.p[2]]),
-				this.getCell([square.p[0] + 1, square.p[1], square.p[2]]),
-				this.getCell([square.p[0], square.p[1] - 1, square.p[2]]),
-				this.getCell([square.p[0], square.p[1] + 1, square.p[2]]),
-				this.getCell([square.p[0], square.p[1], square.p[2] - 1]),
-				this.getCell([square.p[0], square.p[1], square.p[2] + 1])
+				this.getCell([cube.p[0] - 1, cube.p[1], cube.p[2]]),
+				this.getCell([cube.p[0] + 1, cube.p[1], cube.p[2]]),
+				this.getCell([cube.p[0], cube.p[1] - 1, cube.p[2]]),
+				this.getCell([cube.p[0], cube.p[1] + 1, cube.p[2]]),
+				this.getCell([cube.p[0], cube.p[1], cube.p[2] - 1]),
+				this.getCell([cube.p[0], cube.p[1], cube.p[2] + 1])
 			];
 			neighbors.forEach(function (c) {
-				if (c.squareId) {
-					queue.push(c.squareId);
+				if (c.CubeId) {
+					queue.push(c.CubeId);
 				}
 			});
 		}
 
-		return this.squares.length === seenCount;
+		return this.cubes.length === seenCount;
 	}
 
 	/**
-	 * Returns the minimum and maximum x-, y-, and z-coordinates of squares in
+	 * Returns the minimum and maximum x-, y-, and z-coordinates of Cubes in
 	 * the configuration, as an array [minX, minY, minZ, maxX, maxY, maxZ].
 	 */
 	bounds(): [number, number, number, number, number, number] {
 		return [
-			this.squares.map((square) => square.p[0]).min(),
-			this.squares.map((square) => square.p[1]).min(),
-			this.squares.map((square) => square.p[2]).min(),
-			this.squares.map((square) => square.p[0]).max(),
-			this.squares.map((square) => square.p[1]).max(),
-			this.squares.map((square) => square.p[2]).max()
+			this.cubes.map((Cube) => Cube.p[0]).min(),
+			this.cubes.map((Cube) => Cube.p[1]).min(),
+			this.cubes.map((Cube) => Cube.p[2]).min(),
+			this.cubes.map((Cube) => Cube.p[0]).max(),
+			this.cubes.map((Cube) => Cube.p[1]).max(),
+			this.cubes.map((Cube) => Cube.p[2]).max()
 		];
 	}
 
@@ -755,23 +782,23 @@ class World {
 	}
 
 	/**
-	 * Colors the squares by their connectivity, and set their connectivity
+	 * Colors the Cubes by their connectivity, and set their connectivity
 	 * fields
 	 */
 	markComponents(): void {
 		const [components, chunkIds] = this.findComponents();
-		const stable = this.findSquareStability();
-		for (let i = 0; i < this.squares.length; i++) {
+		const stable = this.findCubeStability();
+		for (let i = 0; i < this.cubes.length; i++) {
 			if (components[i] === 2) {
-				this.squares[i].setComponentStatus(stable[i] ? ComponentStatus.CHUNK_STABLE : ComponentStatus.CHUNK_CUT);
+				this.cubes[i].setComponentStatus(stable[i] ? ComponentStatus.CHUNK_STABLE : ComponentStatus.CHUNK_CUT);
 			} else if (components[i] === 1) {
-				this.squares[i].setComponentStatus(stable[i] ? ComponentStatus.LINK_STABLE : ComponentStatus.LINK_CUT);
+				this.cubes[i].setComponentStatus(stable[i] ? ComponentStatus.LINK_STABLE : ComponentStatus.LINK_CUT);
 			} else if (components[i] === 3) {
-				this.squares[i].setComponentStatus(ComponentStatus.CONNECTOR);
+				this.cubes[i].setComponentStatus(ComponentStatus.CONNECTOR);
 			} else {
-				this.squares[i].setComponentStatus(ComponentStatus.NONE);
+				this.cubes[i].setComponentStatus(ComponentStatus.NONE);
 			}
-			this.squares[i].setChunkId(chunkIds[i]);
+			this.cubes[i].setChunkId(chunkIds[i]);
 		}
 	}
 	
@@ -779,31 +806,31 @@ class World {
 	 * Returns a list of component values for each cube
 	 * 
 	 * This returns two arrays. The first array indicates for each cube the
-	 * component status: 1 and 2 mean that the square is in a link or chunk,
+	 * component status: 1 and 2 mean that the Cube is in a link or chunk,
 	 * respectively, while 3 means that the cube is a connector (that is, in
 	 * more than one component). The second array contains the ID of the chunk
-	 * the square is in. If the square is a connector and in more than one chunk,
-	 * the chunk ID of the chunk closer to the root is returned. Squares that
+	 * the Cube is in. If the Cube is a connector and in more than one chunk,
+	 * the chunk ID of the chunk closer to the root is returned. Cubes that
 	 * are not in a chunk get chunk ID -1.
 	 * 
 	 * If the configuration is disconnected, this returns -1 for both component
 	 * status and chunk IDs.
 	 */
 	findComponents(): [number[], number[]] {
-		let components = Array(this.squares.length).fill(-1);
-		let chunkIds = Array(this.squares.length).fill(-1);
+		let components = Array(this.cubes.length).fill(-1);
+		let chunkIds = Array(this.cubes.length).fill(-1);
 		
 		// don't try to find components if the configuration is disconnected
-		if (!this.squares.length || !this.isConnected()) {
+		if (!this.cubes.length || !this.isConnected()) {
 			return [components, chunkIds];
 		}
 		
 		let edgeChunks = Array();
 		edgeChunks.push(Array()); // add the first component
 		
-		let discovery = Array(this.squares.length).fill(-1);
-		let low = Array(this.squares.length).fill(-1);
-		let parent = Array(this.squares.length).fill(-1);
+		let discovery = Array(this.cubes.length).fill(-1);
+		let low = Array(this.cubes.length).fill(-1);
+		let parent = Array(this.cubes.length).fill(-1);
 		
 		let edgeStack = Array();
 		
@@ -852,9 +879,9 @@ class World {
 		// A loose cube is a cube with only 1 neighbor that is in a chunk
 		for (let i = 0; i < components.length; i++) {
 			if (components[i] === 1 &&
-				this.degree(this.squares[i]) === 1) {
-				const neighbor = this.getOneNeighbor(this.squares[i])!;
-				const neighborIndex = this.getSquareId(neighbor.p)!;
+				this.degree(this.cubes[i]) === 1) {
+				const neighbor = this.getOneNeighbor(this.cubes[i])!;
+				const neighborIndex = this.getCubeId(neighbor.p)!;
 				if (components[neighborIndex] === 2) {
 					components[i] = 2;
 					chunkIds[i] = chunkIds[neighborIndex];
@@ -878,7 +905,7 @@ class World {
 		// Go through all neighbors of vertex u.
 		// There are 6 neighbor spots to check
 		
-		let nbrs = this.neighborSquaresIDs(u);
+		let nbrs = this.neighborCubesIDs(u);
 		for (let v of nbrs) {
 			// v is the current neighbor of u
 			
@@ -916,52 +943,52 @@ class World {
 		}
 	}
 	
-	private neighborSquaresIDs(i: number) : number[] {
+	private neighborCubesIDs(i: number) : number[] {
 		let nbrs = Array();
-		let x = this.squares[i].p[0];
-		let y = this.squares[i].p[1];
-		let z = this.squares[i].p[2];
-		if (this.hasSquare([x - 1, y, z])) {
-			nbrs.push(this.getSquareId([x - 1, y, z]));
+		let x = this.cubes[i].p[0];
+		let y = this.cubes[i].p[1];
+		let z = this.cubes[i].p[2];
+		if (this.hasCube([x - 1, y, z])) {
+			nbrs.push(this.getCubeId([x - 1, y, z]));
 		}
-		if (this.hasSquare([x + 1, y, z])) {
-			nbrs.push(this.getSquareId([x + 1, y, z]));
+		if (this.hasCube([x + 1, y, z])) {
+			nbrs.push(this.getCubeId([x + 1, y, z]));
 		}
-		if (this.hasSquare([x, y- 1, z])) {
-			nbrs.push(this.getSquareId([x, y - 1, z]));
+		if (this.hasCube([x, y- 1, z])) {
+			nbrs.push(this.getCubeId([x, y - 1, z]));
 		}
-		if (this.hasSquare([x, y + 1, z])) {
-			nbrs.push(this.getSquareId([x, y + 1, z]));
+		if (this.hasCube([x, y + 1, z])) {
+			nbrs.push(this.getCubeId([x, y + 1, z]));
 		}
-		if (this.hasSquare([x, y, z - 1])) {
-			nbrs.push(this.getSquareId([x, y, z - 1]));
+		if (this.hasCube([x, y, z - 1])) {
+			nbrs.push(this.getCubeId([x, y, z - 1]));
 		}
-		if (this.hasSquare([x, y, z + 1])) {
-			nbrs.push(this.getSquareId([x, y, z + 1]));
+		if (this.hasCube([x, y, z + 1])) {
+			nbrs.push(this.getCubeId([x, y, z + 1]));
 		}
 		return nbrs;
 	}
 	
 	/**
-	 * Determines which squares in the configuration are stable.
+	 * Determines which Cubes in the configuration are stable.
 	 *
-	 * Returns a list of booleans for each square: true if the corresponding square
-	 * is stable; false if it is a cut square.
+	 * Returns a list of booleans for each Cube: true if the corresponding Cube
+	 * is stable; false if it is a cut Cube.
 	 */
-	findSquareStability(): boolean[] {
-		if (!this.squares.length) {
+	findCubeStability(): boolean[] {
+		if (!this.cubes.length) {
 			return [];
 		}
-		let seen = Array(this.squares.length).fill(false);
-		let parent: (number | null)[] = Array(this.squares.length).fill(null);
-		let depth = Array(this.squares.length).fill(-1);
-		let low = Array(this.squares.length).fill(-1);
-		let stable = Array(this.squares.length).fill(true);
-		this.findSquareStabilityRecursive(0, 0, seen, parent, depth, low, stable);
+		let seen = Array(this.cubes.length).fill(false);
+		let parent: (number | null)[] = Array(this.cubes.length).fill(null);
+		let depth = Array(this.cubes.length).fill(-1);
+		let low = Array(this.cubes.length).fill(-1);
+		let stable = Array(this.cubes.length).fill(true);
+		this.findCubeStabilityRecursive(0, 0, seen, parent, depth, low, stable);
 		return stable;
 	}
 
-	private findSquareStabilityRecursive(i: number, d: number,
+	private findCubeStabilityRecursive(i: number, d: number,
 		seen: boolean[], parent: (number | null)[],
 		depth: number[], low: number[],
 		stable: boolean[]): void {
@@ -969,120 +996,120 @@ class World {
 		seen[i] = true;
 		depth[i] = d;
 		low[i] = d;
-		let square = this.squares[i];
+		let cube = this.cubes[i];
 
 		const neighbors = [
-			this.getCell([square.p[0] - 1, square.p[1], square.p[2]]),
-			this.getCell([square.p[0] + 1, square.p[1], square.p[2]]),
-			this.getCell([square.p[0], square.p[1] - 1, square.p[2]]),
-			this.getCell([square.p[0], square.p[1] + 1, square.p[2]]),
-			this.getCell([square.p[0], square.p[1], square.p[2] - 1]),
-			this.getCell([square.p[0], square.p[1], square.p[2] + 1])
+			this.getCell([cube.p[0] - 1, cube.p[1], cube.p[2]]),
+			this.getCell([cube.p[0] + 1, cube.p[1], cube.p[2]]),
+			this.getCell([cube.p[0], cube.p[1] - 1, cube.p[2]]),
+			this.getCell([cube.p[0], cube.p[1] + 1, cube.p[2]]),
+			this.getCell([cube.p[0], cube.p[1], cube.p[2] - 1]),
+			this.getCell([cube.p[0], cube.p[1], cube.p[2] + 1])
 		];
 		const self = this;
-		let cutSquare = false;
+		let cutCube = false;
 		let childCount = 0;
 		neighbors.forEach(function (c) {
-			if (c.squareId !== null && !seen[c.squareId]) {
-				parent[c.squareId] = i;
-				self.findSquareStabilityRecursive(c.squareId, d + 1,
+			if (c.CubeId !== null && !seen[c.CubeId]) {
+				parent[c.CubeId] = i;
+				self.findCubeStabilityRecursive(c.CubeId, d + 1,
 					seen, parent, depth, low, stable);
 				childCount++;
-				if (low[c.squareId] >= depth[i]) {
-					cutSquare = true;
+				if (low[c.CubeId] >= depth[i]) {
+					cutCube = true;
 				}
-				low[i] = Math.min(low[i], low[c.squareId]);
-			} else if (c.squareId !== null && c.squareId != parent[i]) {
-				low[i] = Math.min(low[i], depth[c.squareId]);
+				low[i] = Math.min(low[i], low[c.CubeId]);
+			} else if (c.CubeId !== null && c.CubeId != parent[i]) {
+				low[i] = Math.min(low[i], depth[c.CubeId]);
 			}
 		});
 		if (parent[i] === null) {
 			stable[i] = childCount <= 1;
 		} else {
-			stable[i] = !cutSquare;
+			stable[i] = !cutCube;
 		}
 	}
 
 	/**
-	 * Given a square, determines the number of squares in its descendant(s),
-	 * Viewed from a different square called "root"
+	 * Given a Cube, determines the number of Cubes in its descendant(s),
+	 * Viewed from a different Cube called "root"
 	 */
-	capacity(s: Square, root: Square): number {
-		// do a BFS from the root, counting the squares, but disregard s
+	capacity(s: Cube, root: Cube): number {
+		// do a BFS from the root, counting the Cubes, but disregard s
 				
-		let seen = Array(this.squares.length).fill(false);
-		const bId = this.getSquareId(s.p)!;
+		let seen = Array(this.cubes.length).fill(false);
+		const bId = this.getCubeId(s.p)!;
 		seen[bId] = true;
-		let squareCount = 1;
+		let cubeCount = 1;
 		
-		const rootId = this.getSquareId(root.p)!
+		const rootId = this.getCubeId(root.p)!
 		let queue = [rootId];
 		
 		while (queue.length !== 0) {
-			const squareId = queue.shift()!;
-			if (seen[squareId]) {
+			const cubeId = queue.shift()!;
+			if (seen[cubeId]) {
 				continue;
 			}
 			
-			const square = this.squares[squareId];
-			seen[squareId] = true;
-			if (bId !== squareId) {
-				squareCount++;
+			const cube = this.cubes[cubeId];
+			seen[cubeId] = true;
+			if (bId !== cubeId) {
+				cubeCount++;
 			}
 			
 			const nbrs = [
-				this.getCell([square.p[0] - 1, square.p[1], square.p[2]]),
-				this.getCell([square.p[0] + 1, square.p[1], square.p[2]]),
-				this.getCell([square.p[0], square.p[1] - 1, square.p[2]]),
-				this.getCell([square.p[0], square.p[1] + 1, square.p[2]]),
-				this.getCell([square.p[0], square.p[1], square.p[2] - 1]),
-				this.getCell([square.p[0], square.p[1], square.p[2] + 1])
+				this.getCell([cube.p[0] - 1, cube.p[1], cube.p[2]]),
+				this.getCell([cube.p[0] + 1, cube.p[1], cube.p[2]]),
+				this.getCell([cube.p[0], cube.p[1] - 1, cube.p[2]]),
+				this.getCell([cube.p[0], cube.p[1] + 1, cube.p[2]]),
+				this.getCell([cube.p[0], cube.p[1], cube.p[2] - 1]),
+				this.getCell([cube.p[0], cube.p[1], cube.p[2] + 1])
 			];
 			
 			nbrs.forEach(function (c) {
-				if (c.squareId !== null) {
-					queue.push(c.squareId);
+				if (c.CubeId !== null) {
+					queue.push(c.CubeId);
 				}	
 			});
 		}
 		
-		return this.squares.length - squareCount;
+		return this.cubes.length - cubeCount;
 	}
 
 	/**
-	 * Return an array with for each square if it contributes to the capacity of s
+	 * Return an array with for each Cube if it contributes to the capacity of s
 	 */
-	capacitySquares(s: Square, root: Square): boolean[] {
-		// do a BFS from the root, counting the squares, but disregard s
+	capacityCubes(s: Cube, root: Cube): boolean[] {
+		// do a BFS from the root, counting the Cubes, but disregard s
 
-		let seen = Array(this.squares.length).fill(false);
-		const bId = this.getSquareId(s.p)!;
+		let seen = Array(this.cubes.length).fill(false);
+		const bId = this.getCubeId(s.p)!;
 		seen[bId] = true;
 
-		const rootId = this.getSquareId(root.p)!
+		const rootId = this.getCubeId(root.p)!
 		let queue = [rootId];
 
 		while (queue.length !== 0) {
-			const squareId = queue.shift()!;
-			if (seen[squareId]) {
+			const cubeId = queue.shift()!;
+			if (seen[cubeId]) {
 				continue;
 			}
 
-			const square = this.squares[squareId];
-			seen[squareId] = true;
+			const cube = this.cubes[cubeId];
+			seen[cubeId] = true;
 
 			const nbrs = [
-				this.getCell([square.p[0] - 1, square.p[1], square.p[2]]),
-				this.getCell([square.p[0] + 1, square.p[1], square.p[2]]),
-				this.getCell([square.p[0], square.p[1] - 1, square.p[2]]),
-				this.getCell([square.p[0], square.p[1] + 1, square.p[2]]),
-				this.getCell([square.p[0], square.p[1], square.p[2] - 1]),
-				this.getCell([square.p[0], square.p[1], square.p[2] + 1])
+				this.getCell([cube.p[0] - 1, cube.p[1], cube.p[2]]),
+				this.getCell([cube.p[0] + 1, cube.p[1], cube.p[2]]),
+				this.getCell([cube.p[0], cube.p[1] - 1, cube.p[2]]),
+				this.getCell([cube.p[0], cube.p[1] + 1, cube.p[2]]),
+				this.getCell([cube.p[0], cube.p[1], cube.p[2] - 1]),
+				this.getCell([cube.p[0], cube.p[1], cube.p[2] + 1])
 			];
 
 			nbrs.forEach(function (c) {
-				if (c.squareId !== null) {
-					queue.push(c.squareId);
+				if (c.CubeId !== null) {
+					queue.push(c.CubeId);
 				}
 			});
 		}
@@ -1096,17 +1123,17 @@ class World {
 	isXYZMonotone(): boolean {
 		const [minX, minY, minZ, , , ] = this.bounds();
 
-		for (const square of this.squares) {
-			if (square.p[0] !== minX &&
-				!this.hasSquare([square.p[0] - 1, square.p[1], square.p[2]])) {
+		for (const cube of this.cubes) {
+			if (cube.p[0] !== minX &&
+				!this.hasCube([cube.p[0] - 1, cube.p[1], cube.p[2]])) {
 				return false;
 			}
-			if (square.p[1] !== minY &&
-				!this.hasSquare([square.p[0], square.p[1] - 1, square.p[2]])) {
+			if (cube.p[1] !== minY &&
+				!this.hasCube([cube.p[0], cube.p[1] - 1, cube.p[2]])) {
 				return false;
 			}
-			if (square.p[2] !== minZ &&
-				!this.hasSquare([square.p[0], square.p[1], square.p[2] - 1])) {
+			if (cube.p[2] !== minZ &&
+				!this.hasCube([cube.p[0], cube.p[1], cube.p[2] - 1])) {
 				return false;
 			}
 		}
@@ -1118,18 +1145,18 @@ class World {
 	 * Generates a JSON string from this world.
 	 */
 	serialize(): string {
-		let squares: any = [];
-		this.squares.forEach((square) => {
-			squares.push({
-				'x': square.resetPosition[0],
-				'y': square.resetPosition[1],
-				'z': square.resetPosition[2],
-				'color': [square.color.r, square.color.g, square.color.b]
+		let cubes: any = [];
+		this.cubes.forEach((Cube) => {
+			cubes.push({
+				'x': Cube.resetPosition[0],
+				'y': Cube.resetPosition[1],
+				'z': Cube.resetPosition[2],
+				'color': [Cube.color.r, Cube.color.g, Cube.color.b]
 			});
 		});
 		let obj: any = {
 			'_version': 1,
-			'squares': squares
+			'cubes': cubes
 		};
 		return JSON.stringify(obj);
 	}
@@ -1146,14 +1173,14 @@ class World {
 			throw new Error('Save file with incorrect version');
 		}
 
-		let squares: any[] = obj['squares'];
-		squares.forEach((square: any) => {
+		let cubes: any[] = obj['cubes'];
+		cubes.forEach((Cube: any) => {
 			let color = Color.BLUE;
-			if (square.hasOwnProperty('color')) {
-				color = new Color(square['color'][0],
-					square['color'][1], square['color'][2]);
+			if (Cube.hasOwnProperty('color')) {
+				color = new Color(Cube['color'][0],
+					Cube['color'][1], Cube['color'][2]);
 			}
-			this.addSquare(new Square(this, [square['x'], square['y'], square['z']], color));
+			this.addCube(new Cube(this, [Cube['x'], Cube['y'], Cube['z']], color));
 		});
 	}
 }
