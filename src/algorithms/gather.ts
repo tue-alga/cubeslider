@@ -1,7 +1,8 @@
-import { MoveGenerator, World, Move} from '../world';
+import { World, } from '../world';
 import {Cube, ComponentStatus, Position} from '../cube';
 import { Vector } from '../vector';
 import { Algorithm } from './algorithm';
+import {MoveGenerator} from "../move";
 
 class GatherAlgorithm extends Algorithm {
     
@@ -11,12 +12,12 @@ class GatherAlgorithm extends Algorithm {
 
     override *execute() : MoveGenerator {
         printStep('Gathering');
-        const limit = this.world.boundingBoxSpan();
+        const limit = this.configuration.boundingBoxSpan();
         
-        const root = this.world.cubes[0];
+        const root = this.configuration.cubes[0];
         
         let lightCube = this.findLightCube(limit, root);
-        while (!this.world.isXYZMonotone() && lightCube !== null) {
+        while (!this.configuration.isXYZMonotone() && lightCube !== null) {
             printMiniStep(`Gathering light Cube (${lightCube.p[0]}, ${lightCube.p[1]}, ${lightCube.p[2]})`)
             
             const target = this.findGatherTarget(lightCube);
@@ -39,11 +40,11 @@ class GatherAlgorithm extends Algorithm {
         let heaviestLightCube = null;
         let heaviestLightCubeCapacity = 0;
         
-        for (let i = 0; i < this.world.cubes.length; i++) {
-            const cube = this.world.cubes[i];
+        for (let i = 0; i < this.configuration.cubes.length; i++) {
+            const cube = this.configuration.cubes[i];
             if (cube.componentStatus === ComponentStatus.CONNECTOR || 
                     cube.componentStatus === ComponentStatus.LINK_CUT) {
-                const capacity = this.world.capacity(cube, r);
+                const capacity = this.configuration.capacity(cube, r);
                 if (capacity < limit && capacity > heaviestLightCubeCapacity) {
                     heaviestLightCubeCapacity = capacity;
                     heaviestLightCube = cube;
@@ -63,7 +64,7 @@ class GatherAlgorithm extends Algorithm {
      */
     findGatherTarget(s: Cube) : Position {
         // first check all corners
-        const has = this.world.hasNeighbors([s.p[0], s.p[1], s.p[2]]);
+        const has = this.configuration.hasNeighbors([s.p[0], s.p[1], s.p[2]]);
         let [x, y, z] = s.p;
         
         // All z-1 positions are evaluated last, since this might make the Cube dip below the
@@ -97,14 +98,14 @@ class GatherAlgorithm extends Algorithm {
         // do a bfs from the root to see which Cubes are on the other side of s
         // do a BFS from the root, counting the Cubes, but disregard s
         
-        const capacityCubes = this.world.capacityCubes(s, r);
+        const capacityCubes = this.configuration.capacityCubes(s, r);
         for (let i = 0; i < capacityCubes.length; i++) {
             // only check Cubes that contribute to the capacity of s
             if (!capacityCubes[i]) continue;
             
             // if the configuration is still connected without this Cube, we can safely remove it
-            if (this.world.isConnected(this.world.cubes[i].p)) {
-                return this.world.cubes[i];
+            if (this.configuration.isConnected(this.configuration.cubes[i].p)) {
+                return this.configuration.cubes[i];
             }
         }
         return null;
@@ -128,7 +129,7 @@ class GatherAlgorithm extends Algorithm {
      */
     *walkBoundaryUntil(s: Cube, l: Cube, target: [number, number, number]): MoveGenerator {        
         try {
-            yield* this.world.shortestMovePath(s.p, target);
+            yield* this.configuration.shortestMovePath(s.p, target);
         } catch (e) {
             // TODO no path available, so go as far as possible and close a cycle.
             throw e;

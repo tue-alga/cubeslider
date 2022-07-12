@@ -1,8 +1,12 @@
 import {Move, World} from "../world";
+import {Configuration} from "../configuration";
 
 abstract class Algorithm {
     
-    constructor(public world: World) { }
+    configuration: Configuration;
+    constructor(public world: World) { 
+        this.configuration = world.configuration; 
+    }
 
     // Main function of the algorithm.
     // can be overriden by a generator function

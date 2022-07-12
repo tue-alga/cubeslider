@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js';
 import * as PIXI3D from 'pixi3d';
 
 import { Cube, Color } from './cube';
-import {World, Move, MoveGenerator} from './world';
+import { World, Move } from './world';
 import {
 	IconButton,
 	IconColorButton,
@@ -386,11 +386,11 @@ class CubeSlider {
 
 		while (this.time >= this.timeStep) {
 			// first actually execute the current move
-			if (this.world.currentMove) {
-				this.world.currentMove.execute();
-				this.world.currentMove = null;
+			if (this.world.configuration.currentMove) {
+				this.world.configuration.currentMove.execute();
+				this.world.configuration.currentMove = null;
 			}
-			this.world.markComponents();
+			this.world.configuration.markComponents();
 
 			if (this.time === this.timeStep) {
 				break;
@@ -403,7 +403,7 @@ class CubeSlider {
 				const proposedMove = this.algorithm!.next();
 				if (proposedMove.done) {
 					console.log(`Time step ${this.timeStep}. No move left, so pausing the simulation.`);
-					this.world.currentMove = null;
+					this.world.configuration.currentMove = null;
 					this.run();  // pause
 					this.runButton.setEnabled(false);
 					this.stepButton.setEnabled(false);
@@ -414,7 +414,7 @@ class CubeSlider {
 					throw new Error("Invalid move detected: " + proposedMove.value.toString());
 				}
 
-				this.world.currentMove = proposedMove.value;
+				this.world.configuration.currentMove = proposedMove.value;
 
 			} catch (e) {
 				const cryEmoji = String.fromCodePoint(parseInt('1F622', 16));
@@ -431,14 +431,14 @@ class CubeSlider {
 				this.time = this.timeStep;
 				break;
 			}
-			if (this.world.currentMove) {
-				console.log(`Time step ${this.timeStep}. Move: ${this.world.currentMove.toString()}`);
+			if (this.world.configuration.currentMove) {
+				console.log(`Time step ${this.timeStep}. Move: ${this.world.configuration.currentMove.toString()}`);
 
 				// mark components with the moving Cube removed
-				const movingCube = this.world.getCube(this.world.currentMove.sourcePosition())!;
-				this.world.removeCubeUnmarked(movingCube);
-				this.world.markComponents();
-				this.world.addCubeUnmarked(movingCube);
+				const movingCube = this.world.configuration.getCube(this.world.configuration.currentMove.sourcePosition())!;
+				this.world.configuration.removeCubeUnmarked(movingCube);
+				this.world.configuration.markComponents();
+				this.world.configuration.addCubeUnmarked(movingCube);
 			}
 		}
 		
@@ -458,7 +458,7 @@ class CubeSlider {
 			this.bottomBarOffset = Math.min(this.bottomBarOffset + 0.5 * delta, 15);
 		}
 
-		this.world.updatePositions(this.time, this.timeStep);
+		this.world.configuration.updatePositions(this.time, this.timeStep);
 	}
 
 	worldClickHandler(e: PIXI.InteractionEvent): void {
@@ -554,7 +554,7 @@ class CubeSlider {
 			this.runButton.setTooltip("Run simulation");
 			this.stepButton.setEnabled(true);
 		} else {
-			if (!this.world.isConnected()) {
+			if (!this.world.configuration.isConnected()) {
 				alert("The configuration is not connected. " +
 					"Make sure to enter a connected configuration before running the algorithm.");
 				return;
@@ -608,7 +608,7 @@ class CubeSlider {
 		this.saveButton.setEnabled(true);
 		this.algorithmButton.setEnabled(true);
 
-		this.world.reset();
+		this.world.configuration.reset();
 		this.time = 0;
 		this.timeStep = 0;
 		this.runUntil = Infinity;
@@ -650,7 +650,7 @@ class CubeSlider {
 	}
 
 	save(): void {
-		const file = this.world.serialize();
+		const file = this.world.configuration.serialize();
 		const dialogs = document.getElementById('saveDialog');
 		dialogs!.style.display = 'block';
 		this.textArea.value = file;
@@ -659,7 +659,7 @@ class CubeSlider {
 	load(data: string): void {
 		const newWorld = new World(this.app);
 		try {
-			newWorld.deserialize(data);
+			newWorld.configuration.deserialize(data);
 		} catch (e) {
 			window.alert('Could not read JSON data: ' + e);
 			return;
@@ -670,7 +670,7 @@ class CubeSlider {
 	}
 
 	ipeExport(): void {
-		const file = this.world.serialize();
+		const file = this.world.configuration.serialize();
 		const dialogs = document.getElementById('ipeDialog');
 		dialogs!.style.display = 'block';
 		//this.ipeArea.value = this.world.toIpe();
@@ -679,7 +679,7 @@ class CubeSlider {
 	showConnectivity(): void {
 		this.showConnectivityButton.setPressed(!this.showConnectivityButton.isPressed());
 		this.world.showComponentMarks = this.showConnectivityButton.isPressed();
-		for (let cube of this.world.cubes) {
+		for (let cube of this.world.configuration.cubes) {
 			cube.updatePixi();
 		}
 	}

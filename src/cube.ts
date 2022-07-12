@@ -101,7 +101,7 @@ class Cube {
 		let newCubePosition: Position = [
 			this.p[0] + p[0], this.p[1] + p[1], this.p[2] + p[2]];
 		shield.on("pointerover", () => {
-			if (this.world.modifyingCubes && !this.world.hasCube(newCubePosition)) {
+			if (this.world.modifyingCubes && !this.world.configuration.hasCube(newCubePosition)) {
 				this.world.showPhantomCube(newCubePosition);
 			}
 		});
@@ -111,7 +111,7 @@ class Cube {
 		shield.on("pointerdown", (event: InteractionEvent) => {
 			if (this.world.modifyingCubes) {
 				// primary button (0) adds cubes, secondary button (2) removes cubes 
-				if (event.data.button == 0 && !this.world.hasCube(newCubePosition)) {
+				if (event.data.button == 0 && !this.world.configuration.hasCube(newCubePosition)) {
 					this.world.hidePhantomCube();
 					this.world.addCube(new Cube(this.world, newCubePosition, this.color));
 				} else if (event.data.button == 2) {
@@ -155,7 +155,7 @@ class Cube {
 			[x, y, z] = move.interpolate(time - timeStep + 1);
 		}
 	
-		let pixiCoords = World.worldToPixiCoords(this.p);
+		let pixiCoords = World.worldToPixiCoords([x, y, z]);
 		
 		this.pixi.x = pixiCoords[0];
 		this.pixi.y = pixiCoords[1];
