@@ -426,8 +426,7 @@ class Configuration {
      * fields
      */
     markComponents(): void {
-        const [components, chunkIds] = this.findComponents();
-        const stable = this.findCubeStability();
+        const [components, chunkIds, stable] = this.findComponents();
         for (let i = 0; i < this.cubes.length; i++) {
             if (components[i] === 2) {
                 this.cubes[i].setComponentStatus(stable[i] ? ComponentStatus.CHUNK_STABLE : ComponentStatus.CHUNK_CUT);
@@ -445,24 +444,27 @@ class Configuration {
     /**
      * Returns a list of component values for each cube
      *
-     * This returns two arrays. The first array indicates for each cube the
+     * This returns three arrays. The first array indicates for each cube the
      * component status: 1 and 2 mean that the Cube is in a link or chunk,
      * respectively, while 3 means that the cube is a connector (that is, in
-     * more than one component). The second array contains the ID of the chunk
+     * more than one component).
+     * The second array contains the ID of the chunk
      * the Cube is in. If the Cube is a connector and in more than one chunk,
      * the chunk ID of the chunk closer to the root is returned. Cubes that
      * are not in a chunk get chunk ID -1.
+     * The third array returns for every cube if it is stable or not (cut)
      *
      * If the configuration is disconnected, this returns -1 for both component
      * status and chunk IDs.
      */
-    findComponents(): [number[], number[]] {
+    findComponents(): [number[], number[], boolean[]] {
         let components = Array(this.cubes.length).fill(-1);
         let chunkIds = Array(this.cubes.length).fill(-1);
+        const stable = this.findCubeStability();
 
         // don't try to find components if the configuration is disconnected
         if (!this.cubes.length || !this.isConnected()) {
-            return [components, chunkIds];
+            return [components, chunkIds, stable];
         }
 
         let edgeChunks = Array();
@@ -528,8 +530,20 @@ class Configuration {
                 }
             }
         }
-
-        return [components, chunkIds];
+        
+        // Let all cut squares in chunks that cut off something not in this chunk be a connector instead
+        for (let i = 0; i < components.length; i++) {
+            if (components[i] === 2 && !stable[i]) {
+                const rootIndex = i === 0 ? 1 : 0;
+                const capacity = this.capacity(this.cubes[i], this.cubes[rootIndex]);
+                if (capacity !== 1 && capacity !== this.cubes.length - 2) {
+                    // this square cuts more than a single cube, and is therefore a connector instead
+                    components[i] = 3;
+                }
+            }
+        }
+        
+        return [components, chunkIds, stable];
     }
 
     private findComponentsRecursive(u: number, discovery: number[],

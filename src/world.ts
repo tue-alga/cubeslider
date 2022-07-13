@@ -240,7 +240,7 @@ class World {
 				color = new Color(cube['color'][0],
 					cube['color'][1], cube['color'][2]);
 			}
-			this.addCube(new Cube(this,[cube['x'], cube['y'], cube['z']], color));
+			this.addCube(new Cube(this, [cube['x'], cube['y'], cube['z']], color));
 		});
 	}
 }

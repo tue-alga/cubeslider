@@ -27,14 +27,16 @@ class GatherAlgorithm extends Algorithm {
             }
             
             yield* this.walkBoundaryUntil(leaf, lightCube, target);
-
+            
+            this.configuration.markComponents();
             lightCube = this.findLightCube(limit, root);
         }
     }
 
     /**
      * Finds a light Cube closest to the first Cube in the Cubes array, 
-     * or null if there are no light Cubes in the configuration
+     * or null if there are no light Cubes in the configuration.
+     * This assumes that the component status of the cubes has been set properly.
      */
     findLightCube(limit: number, r: Cube): Cube | null {
         let heaviestLightCube = null;
@@ -149,7 +151,7 @@ class GatherAlgorithm extends Algorithm {
      *      In this case, leaf Cube s is blocked by its own ancestors.
      *      Move s to a position that closes a cycle, such that we can make progress.
      */
-    *walkBoundaryUntil(s: Cube, l: Cube, target: [number, number, number]): MoveGenerator {        
+    *walkBoundaryUntil(s: Cube, l: Cube, target: [number, number, number]): MoveGenerator {
         try {
             yield* this.configuration.shortestMovePath(s.p, target);
         } catch (e) {
