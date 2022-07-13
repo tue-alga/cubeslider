@@ -410,7 +410,7 @@ class CubeSlider {
 					break;
 				}
 				if (!proposedMove.value.isValid()) {
-					throw new Error("Invalid move detected: " + proposedMove.value.toString());
+					throw new Error("Invalid move: " + proposedMove.value.toString());
 				}
 
 				this.world.configuration.currentMove = proposedMove.value;

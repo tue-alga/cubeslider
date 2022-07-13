@@ -18,8 +18,6 @@ class Configuration {
     worldGrid: WorldCell[][][] = [];
     cubes: Cube[] = [];
     currentMove: Move | null = null;
-
-    constructor(private world: World | null) {}
     
     /**
      * Returns the WorldCell at the given coordinate.
@@ -42,7 +40,7 @@ class Configuration {
     /**
      * Returns the ID of the Cube at the given location, or null if that cell is empty.
      */
-    private getCubeId(p: Position): number | null {
+    public getCubeId(p: Position): number | null {
         return this.getCell(p).CubeId;
     }
 
@@ -250,12 +248,13 @@ class Configuration {
     /**
      * Executes the shortest move path between the given Cubes.
      *
-     * Throws if no move path is possible.
+     * Returns nothing if no path exists.
+     * Throws if there is no cube on the from position.
      *
      * @param from The source coordinate, containing the Cube we want to move.
      * @param to The target coordinate, which should be an empty cell.
      */
-    *shortestMovePath(from: Position, to: Position): MoveGenerator {
+    shortestMovePath(from: Position, to: Position): Move[] {
         // temporarily remove the origin Cube from the configuration, to avoid
         // invalid moves in the resulting move path (because we could slide
         // along the origin Cube itself)
@@ -293,7 +292,7 @@ class Configuration {
 
         if (!seen[to[0] + "," + to[1] + "," + to[2]]) {
             this.addCube(cube);
-            throw "No move path possible from " + from + " to " + to;
+            return [];
         }
 
         // reconstruct the path
@@ -308,7 +307,7 @@ class Configuration {
         // put the origin Cube back
         this.addCube(cube);
 
-        yield* path;
+        return path;
     }
 
     /**
@@ -769,6 +768,47 @@ class Configuration {
         }
 
         return seen.map(c => !c);
+    }
+
+    /**
+     * Return an array with for each Cube if it is in the same connected component as leaf,
+     * when removedCube is removed from the configuration.
+     * Both removedCube and leaf are considered to be in this component
+     */
+    connectedComponent(removedCube: Cube, leaf: Cube): boolean[] {
+        let seen = Array(this.cubes.length).fill(false);
+        const removedCubeId = this.getCubeId(removedCube.p)!;
+        seen[removedCubeId] = true;
+        
+        const leafId = this.getCubeId(leaf.p)!;
+        let queue = [leafId];
+
+        while (queue.length !== 0) {
+            const cubeId = queue.shift()!;
+            if (seen[cubeId]) {
+                continue;
+            }
+
+            const cube = this.cubes[cubeId];
+            seen[cubeId] = true;
+
+            const nbrs = [
+                this.getCell([cube.p[0] - 1, cube.p[1], cube.p[2]]),
+                this.getCell([cube.p[0] + 1, cube.p[1], cube.p[2]]),
+                this.getCell([cube.p[0], cube.p[1] - 1, cube.p[2]]),
+                this.getCell([cube.p[0], cube.p[1] + 1, cube.p[2]]),
+                this.getCell([cube.p[0], cube.p[1], cube.p[2] - 1]),
+                this.getCell([cube.p[0], cube.p[1], cube.p[2] + 1])
+            ];
+
+            nbrs.forEach(function (c) {
+                if (c.CubeId !== null) {
+                    queue.push(c.CubeId);
+                }
+            });
+        }
+
+        return seen;
     }
 
     /**

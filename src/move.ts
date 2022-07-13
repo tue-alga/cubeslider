@@ -1,5 +1,4 @@
 import {Position} from "./cube";
-import {World} from "./world";
 import {Configuration} from "./configuration";
 
 /**
@@ -198,8 +197,13 @@ class Move {
     toString(): string {
         const from = this.position;
         const to = this.targetPosition();
-        return `(${from[0]}, ${from[1]}) \u2192 (${to[0]}, ${to[1]})`;
+        return `(${from[0]}, ${from[1]}, ${from[2]}) \u2192 (${to[0]}, ${to[1]}, ${to[2]})`;
     }
+    
+    equals(m: Move): boolean {
+        return this.position === m.position && this.targetPosition() === m.targetPosition();
+    }
+    
 }
 
 export { Move, MoveGenerator, moveDirections };

@@ -1,8 +1,8 @@
 import { World, } from '../world';
 import {Cube, ComponentStatus, Position} from '../cube';
-import { Vector } from '../vector';
 import { Algorithm } from './algorithm';
 import {MoveGenerator} from "../move";
+import {Configuration} from "../configuration";
 
 class GatherAlgorithm extends Algorithm {
     
@@ -18,13 +18,14 @@ class GatherAlgorithm extends Algorithm {
         
         let lightCube = this.findLightCube(limit, root);
         while (!this.configuration.isXYZMonotone() && lightCube !== null) {
+            const root = this.configuration.getCubeId(lightCube.p) === 0 ? this.configuration.cubes[1] : this.configuration.cubes[0];
             printMiniStep(`Gathering light Cube (${lightCube.p[0]}, ${lightCube.p[1]}, ${lightCube.p[2]})`)
 
-            const target = this.findGatherTarget(lightCube);
             const leaf = this.findLeafInDescendants(lightCube, root);
             if (leaf === null) {
                 break;
             }
+            const target = this.findGatherTarget(lightCube, leaf);
             
             yield* this.walkBoundaryUntil(leaf, lightCube, target);
             
@@ -58,30 +59,61 @@ class GatherAlgorithm extends Algorithm {
     }
 
     /**
-     * Given a light Cube s, returns a neighboring empty cell n of s such that the following holds:
-     * 
-     * * n is a diagonal neighbor of s, and the two cells neighboring both n and s are filled by Cubes
-     *  or else
-     * * n is a direct neighbor of s and n lies within the bounding box
+     * Given a list of positions, return true when position p is a neighbor to at least one of these positions
      */
-    findGatherTarget(s: Cube) : Position {
+    nbrInComponent(p: Position, component: Position[]): boolean {
+        for (let position of component) {
+            if (
+                (position[0] === p[0] + 1 && position[1] === p[1] && position[2] === p[2]) ||
+                (position[0] === p[0] - 1 && position[1] === p[1] && position[2] === p[2]) ||
+                (position[0] === p[0] && position[1] === p[1] + 1 && position[2] === p[2]) ||
+                (position[0] === p[0] && position[1] === p[1] - 1&& position[2] === p[2]) ||
+                (position[0] === p[0] && position[1] === p[1] && position[2] === p[2] + 1) ||
+                (position[0] === p[0] && position[1] === p[1] && position[2] === p[2] - 1)
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Given a light cube lightCube, returns a neighboring empty cell n of lightCube
+     * such that n is adjacent to the connected component c where cube leaf lies in when removing lightCube,
+     * and one of the following holds:
+     * 
+     * * n is a diagonal neighbor of lightCube, and the two cells neighboring both n and lightCube are filled by cubes
+     *  or else
+     * * n is a direct neighbor of lightCube and n lies within the bounding box
+     */
+    findGatherTarget(lightCube: Cube, leaf: Cube) : Position {
         // first check all corners
-        const has = this.configuration.hasNeighbors([s.p[0], s.p[1], s.p[2]]);
-        let [x, y, z] = s.p;
+        const has = this.configuration.hasNeighbors([lightCube.p[0], lightCube.p[1], lightCube.p[2]]);
+        let [x, y, z] = lightCube.p;
+
+        const inComponent = this.configuration.connectedComponent(lightCube, leaf);
+        const componentPositions: Position[] = [];
+        for (let i = 0; i < inComponent.length; i++) {
+            if (inComponent[i]) {
+                componentPositions.push(this.configuration.cubes[i].p);
+            }
+        }
         
-        // if this square is part of a corner, return the fourth position that closes the chunk.
-        if (has['x'] && has['y'] && !this.configuration.hasCube([x - 1, y - 1, z])) return [x - 1, y - 1, z];
-        if (has['x'] && has['Y'] && !this.configuration.hasCube([x - 1, y + 1, z])) return [x - 1, y + 1, z];
-        if (has['x'] && has['z'] && !this.configuration.hasCube([x - 1, y, z - 1])) return [x - 1, y, z - 1];
-        if (has['x'] && has['Z'] && !this.configuration.hasCube([x - 1, y, z + 1])) return [x - 1, y, z + 1];
-        if (has['X'] && has['y'] && !this.configuration.hasCube([x + 1, y - 1, z])) return [x + 1, y - 1, z];
-        if (has['X'] && has['Y'] && !this.configuration.hasCube([x + 1, y + 1, z])) return [x + 1, y + 1, z];
-        if (has['X'] && has['z'] && !this.configuration.hasCube([x + 1, y, z - 1])) return [x + 1, y, z - 1];
-        if (has['X'] && has['Z'] && !this.configuration.hasCube([x + 1, y, z + 1])) return [x + 1, y, z + 1];
-        if (has['y'] && has['z'] && !this.configuration.hasCube([x, y - 1, z - 1])) return [x, y - 1, z - 1];
-        if (has['y'] && has['Z'] && !this.configuration.hasCube([x, y - 1, z + 1])) return [x, y - 1, z + 1];
-        if (has['Y'] && has['z'] && !this.configuration.hasCube([x, y + 1, z - 1])) return [x, y + 1, z - 1];
-        if (has['Y'] && has['Z'] && !this.configuration.hasCube([x, y + 1, z + 1])) return [x, y + 1, z + 1];
+        // if this square is part of a corner where the fourth position is missing,
+        // and the fourth position is also touching the connected component of the leaf square,
+        // return that fourth position.
+        if (has['x'] && has['y'] && !this.configuration.hasCube([x - 1, y - 1, z]) && this.nbrInComponent([x - 1, y - 1, z], componentPositions)) return [x - 1, y - 1, z];
+        if (has['x'] && has['Y'] && !this.configuration.hasCube([x - 1, y + 1, z]) && this.nbrInComponent([x - 1, y + 1, z], componentPositions)) return [x - 1, y + 1, z];
+        if (has['x'] && has['z'] && !this.configuration.hasCube([x - 1, y, z - 1]) && this.nbrInComponent([x - 1, y, z - 1], componentPositions)) return [x - 1, y, z - 1];
+        if (has['x'] && has['Z'] && !this.configuration.hasCube([x - 1, y, z + 1]) && this.nbrInComponent([x - 1, y, z + 1], componentPositions)) return [x - 1, y, z + 1];
+        if (has['X'] && has['y'] && !this.configuration.hasCube([x + 1, y - 1, z]) && this.nbrInComponent([x + 1, y - 1, z], componentPositions)) return [x + 1, y - 1, z];
+        if (has['X'] && has['Y'] && !this.configuration.hasCube([x + 1, y + 1, z]) && this.nbrInComponent([x + 1, y + 1, z], componentPositions)) return [x + 1, y + 1, z];
+        if (has['X'] && has['z'] && !this.configuration.hasCube([x + 1, y, z - 1]) && this.nbrInComponent([x + 1, y, z - 1], componentPositions)) return [x + 1, y, z - 1];
+        if (has['X'] && has['Z'] && !this.configuration.hasCube([x + 1, y, z + 1]) && this.nbrInComponent([x + 1, y, z + 1], componentPositions)) return [x + 1, y, z + 1];
+        if (has['y'] && has['z'] && !this.configuration.hasCube([x, y - 1, z - 1]) && this.nbrInComponent([x, y - 1, z - 1], componentPositions)) return [x, y - 1, z - 1];
+        if (has['y'] && has['Z'] && !this.configuration.hasCube([x, y - 1, z + 1]) && this.nbrInComponent([x, y - 1, z + 1], componentPositions)) return [x, y - 1, z + 1];
+        if (has['Y'] && has['z'] && !this.configuration.hasCube([x, y + 1, z - 1]) && this.nbrInComponent([x, y + 1, z - 1], componentPositions)) return [x, y + 1, z - 1];
+        if (has['Y'] && has['Z'] && !this.configuration.hasCube([x, y + 1, z + 1]) && this.nbrInComponent([x, y + 1, z + 1], componentPositions)) return [x, y + 1, z + 1];
         
         // check all sides, we already know that there are no corners.
         // only return the side that is within the bounding box
@@ -152,11 +184,53 @@ class GatherAlgorithm extends Algorithm {
      *      Move s to a position that closes a cycle, such that we can make progress.
      */
     *walkBoundaryUntil(s: Cube, l: Cube, target: [number, number, number]): MoveGenerator {
-        try {
-            yield* this.configuration.shortestMovePath(s.p, target);
-        } catch (e) {
-            // TODO no path available, so go as far as possible and close a cycle.
-            throw e;
+        // create a new configuration containing only light square l and its descendants.
+        let lightSquareDescendants = new Configuration();
+        let capacityCubes = this.configuration.capacityCubes(l, this.configuration.cubes[0]);
+        for (let i = 0; i < capacityCubes.length; i++) {
+            if (capacityCubes[i]) {
+                lightSquareDescendants.addCube(new Cube(null, this.configuration.cubes[i].p));
+            }
+        }
+        lightSquareDescendants.addCube(new Cube(null, l.p));
+        
+        // compute path in descendants of l.
+        // set the configuration to be the original configuration instead of the "dummy" configuration.
+        let pathDescendants = lightSquareDescendants.shortestMovePath(s.p, target);
+        pathDescendants.forEach(m => {
+           m.configuration = this.configuration;
+        });
+        
+        let pathComplete = this.configuration.shortestMovePath(s.p, target);
+
+        if (pathDescendants.length === 0) {
+            // no path in the descendants possible (case 3)
+            // TODO
+        } else {
+            let samePath = true;
+            if (pathComplete.length !== pathDescendants.length) {
+                samePath = false;
+            } else {
+                for (let i = 0; i < pathComplete.length; i++) {
+                    if (pathComplete[i] !== pathDescendants[i]) {
+                        samePath = false;
+                    }
+                }
+            }
+            if (!samePath) {
+                // The two paths are not the same, so we must be blocked somewhere
+                // go as far on the descendants path as is possible (case 2)
+                for (let m of pathDescendants) {
+                    if (m.isValid()) {
+                        yield m;
+                    } else {
+                        break;
+                    }
+                }
+            } else {
+                // both paths are possible, just execute this path (case 1)
+                yield* pathDescendants;
+            }
         }
     }
     

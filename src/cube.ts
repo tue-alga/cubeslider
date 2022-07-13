@@ -57,10 +57,10 @@ class Cube {
 	foregroundPixi = new PIXI.Graphics();
 	selected: boolean = false;
 
-	constructor(private world: World | null, p: [number, number, number], color: Color) {
+	constructor(private world: World | null, p: [number, number, number], color?: Color) {
 		this.p = [p[0], p[1], p[2]];
 		this.resetPosition = [p[0], p[1], p[2]];
-		this.color = color;
+		this.color = (color === undefined) ? new Color(Color.BASE_COLOR.r, Color.BASE_COLOR.g, Color.BASE_COLOR.b) : color;
 		this.componentStatus = ComponentStatus.NONE;
 		this.chunkId = -1;
 
@@ -133,7 +133,7 @@ class Cube {
 
 	updatePixi(): void {
 		if (this.world === null) {
-			throw Error("Calling updatePixi on a cube that does not have a world attached makes no sense.");
+			throw Error("You tried calling updatePixi on a cube that does not have a world attached.");
 		}
 		let material = this.mesh.material! as PIXI3D.StandardMaterial;
 		if (!this.world.showComponentMarks) {
@@ -182,12 +182,16 @@ class Cube {
 
 	setComponentStatus(componentStatus: ComponentStatus): void {
 		this.componentStatus = componentStatus;
-		this.updatePixi();
+		if (this.world !== null) {
+			this.updatePixi();
+		}
 	}
 
 	setChunkId(chunkId: number): void {
 		this.chunkId = chunkId;
-		this.updatePixi();
+		if (this.world !== null) {
+			this.updatePixi();
+		}
 	}
 
 	nextColor(): void {
