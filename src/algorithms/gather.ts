@@ -14,11 +14,10 @@ class GatherAlgorithm extends Algorithm {
         printStep('Gathering');
         const limit = this.configuration.boundingBoxSpan();
         
-        const root = this.configuration.cubes[0];
-        
-        let lightCube = this.findLightCube(limit, root);
+        let [lightCube, root] = this.findLightCube(limit);
         while (!this.configuration.isXYZMonotone() && lightCube !== null) {
-            const root = this.configuration.getCubeId(lightCube.p) === 0 ? this.configuration.cubes[1] : this.configuration.cubes[0];
+            // if there is a lightCube, there is also a corresponding root
+            root = root!;
             printMiniStep(`Gathering light Cube (${lightCube.p[0]}, ${lightCube.p[1]}, ${lightCube.p[2]})`)
 
             const leaf = this.findLeafInDescendants(lightCube, root);
@@ -27,35 +26,46 @@ class GatherAlgorithm extends Algorithm {
             }
             const target = this.findGatherTarget(lightCube, leaf);
             
-            yield* this.walkBoundaryUntil(leaf, lightCube, target);
+            yield* this.walkBoundaryUntil(leaf, lightCube, root, target);
             
             this.configuration.markComponents();
-            lightCube = this.findLightCube(limit, root);
+            [lightCube, root] = this.findLightCube(limit);
         }
     }
 
     /**
-     * Finds a light Cube closest to the first Cube in the Cubes array, 
+     * Finds a heaviest light cube and its corresponding root, 
      * or null if there are no light Cubes in the configuration.
      * This assumes that the component status of the cubes has been set properly.
      */
-    findLightCube(limit: number, r: Cube): Cube | null {
+    findLightCube(limit: number): [Cube | null, Cube | null] {
         let heaviestLightCube = null;
         let heaviestLightCubeCapacity = 0;
+        let heaviestLightCubeRoot = null;
         
         for (let i = 0; i < this.configuration.cubes.length; i++) {
             const cube = this.configuration.cubes[i];
             if (cube.componentStatus === ComponentStatus.CONNECTOR || 
                     cube.componentStatus === ComponentStatus.LINK_CUT) {
-                const capacity = this.configuration.capacity(cube, r);
-                if (capacity < limit && capacity > heaviestLightCubeCapacity) {
-                    heaviestLightCubeCapacity = capacity;
+                
+                let lightestBranchCapacity = Number.MAX_VALUE;
+                let lightestBranchRoot = null;
+                for (let root of this.configuration.getNeighbors(cube)) {
+                    const capacity = this.configuration.capacity(cube, root);
+                    if (capacity < lightestBranchCapacity) {
+                        lightestBranchCapacity = capacity;
+                        lightestBranchRoot = root;
+                    }
+                }
+                if (lightestBranchCapacity < limit && lightestBranchCapacity > heaviestLightCubeCapacity) {
+                    heaviestLightCubeCapacity = lightestBranchCapacity;
                     heaviestLightCube = cube;
+                    heaviestLightCubeRoot = lightestBranchRoot;
                 }
             }
         }
         
-        return heaviestLightCube;
+        return [heaviestLightCube, heaviestLightCubeRoot];
     }
 
     /**
@@ -168,40 +178,40 @@ class GatherAlgorithm extends Algorithm {
     }
 
     /**
-     * Runs a series of moves to walk a leaf Cube s over the boundary of
+     * Runs a series of moves to walk a leafCube Cube leafCube over the boundary of
      * the configuration to end up at the given empty target cell.
      * It tries to find a shortest path over only the Cubes
-     * contributing to the capacity of the corresponding light Cube l.
+     * contributing to the capacity of the corresponding light cube lightCube.
      * One of three situations might occur:
      * * This path exists and is also valid when considering the complete configuration:
      *      In this case, just follow this path
      * * This path exists, but is not valid when considering the complete configuration:
-     *      The path is blocked by a cube not in the capacity of l.
+     *      The path is blocked by a cube not in the capacity of lightCube.
      *      Just move as far along the path as possible.
-     *      This closes a cycle that contains l, which makes l not light anymore.
+     *      This closes a cycle that contains lightCube, which makes lightCube not light anymore.
      * * This path does not exist.
-     *      In this case, leaf Cube s is blocked by its own ancestors.
-     *      Move s to a position that closes a cycle, such that we can make progress.
+     *      In this case, cube leafCube is blocked by its own ancestors.
+     *      Move leafCube to a position that closes a cycle, such that we can make progress.
      */
-    *walkBoundaryUntil(s: Cube, l: Cube, target: [number, number, number]): MoveGenerator {
-        // create a new configuration containing only light square l and its descendants.
+    *walkBoundaryUntil(leafCube: Cube, lightCube: Cube, root: Cube, target: [number, number, number]): MoveGenerator {
+        // create a new configuration containing only light square lightCube and its descendants.
         let lightSquareDescendants = new Configuration();
-        let capacityCubes = this.configuration.capacityCubes(l, this.configuration.cubes[0]);
+        let capacityCubes = this.configuration.capacityCubes(lightCube, root);
         for (let i = 0; i < capacityCubes.length; i++) {
             if (capacityCubes[i]) {
                 lightSquareDescendants.addCube(new Cube(null, this.configuration.cubes[i].p));
             }
         }
-        lightSquareDescendants.addCube(new Cube(null, l.p));
+        lightSquareDescendants.addCube(new Cube(null, lightCube.p));
         
-        // compute path in descendants of l.
+        // compute path in descendants of lightCube.
         // set the configuration to be the original configuration instead of the "dummy" configuration.
-        let pathDescendants = lightSquareDescendants.shortestMovePath(s.p, target);
+        let pathDescendants = lightSquareDescendants.shortestMovePath(leafCube.p, target);
         pathDescendants.forEach(m => {
            m.configuration = this.configuration;
         });
         
-        let pathComplete = this.configuration.shortestMovePath(s.p, target);
+        let pathComplete = this.configuration.shortestMovePath(leafCube.p, target);
 
         if (pathDescendants.length === 0) {
             // no path in the descendants possible (case 3)
