@@ -1,6 +1,6 @@
-import {World} from "../world";
-import {Configuration} from "../configuration";
-import {Move} from "../move";
+import { World } from "../world";
+import { Configuration } from "../configuration";
+import { MoveGenerator } from "../move";
 
 abstract class Algorithm {
     
@@ -11,7 +11,7 @@ abstract class Algorithm {
 
     // Main function of the algorithm.
     // can be overriden by a generator function
-    abstract execute(): IterableIterator<Move>;
+    abstract execute(): MoveGenerator;
 }
 
 export { Algorithm };

@@ -19,6 +19,8 @@ import { Algorithm } from './algorithms/algorithm';
 import { CustomAlgorithm } from './algorithms/custom';
 import { GatherAlgorithm } from './algorithms/gather';
 import {Move} from "./move";
+import {CompactAlgorithm} from "./algorithms/compact";
+import {GatherAndCompactAlgorithm} from "./algorithms/gather-and-compact";
 
 /*import { GatherAndCompactAlgorithm } from './algorithms/gather-and-compact';
 import { CompactAlgorithm } from './algorithms/compact';
@@ -39,14 +41,12 @@ enum SimulationMode {
 class CubeSlider {
 
 	readonly AVAILABLE_ALGORITHMS: { [name: string]: new (world: World) => Algorithm } = {
-		/*"Gather & Compact": GatherAndCompactAlgorithm,
 		"Gather": GatherAlgorithm,
 		"Compact": CompactAlgorithm,
-		"Canonicalize": CanonicalizeAlgorithm,*/
-		"Gather": GatherAlgorithm,
+		"Gather & Compact": GatherAndCompactAlgorithm,
 		"Custom move sequence": CustomAlgorithm
 	};
-	selectedAlgorithm = "Gather";
+	selectedAlgorithm = "Gather & Compact";
 
 	private readonly app: PIXI.Application;
 
@@ -78,25 +78,25 @@ class CubeSlider {
 	private bottomBarOffset = 0;
 	private statusBar: Toolbar;
 
-	private runButton: IconButton;
-	private stepButton: IconButton;
-	private resetButton: IconButton;
-	private algorithmButton: TextButton;
-	private showConnectivityButton: IconButton;
-	private helpButton: IconButton;
-	private cursorPositionLabel: CoordinateLabel;
+	private readonly runButton: IconButton;
+	private readonly stepButton: IconButton;
+	private readonly resetButton: IconButton;
+	private readonly algorithmButton: TextButton;
+	private readonly showConnectivityButton: IconButton;
+	private readonly helpButton: IconButton;
+	private readonly cursorPositionLabel: CoordinateLabel;
 
-	private panButton: IconButton;
-	private selectButton: IconButton;
-	private modifyCubeButton: IconButton;
-	private colorButton: IconColorButton;
-	private deleteButton: IconButton;
-	private saveButton: IconButton;
+	private readonly panButton: IconButton;
+	private readonly selectButton: IconButton;
+	private readonly modifyCubeButton: IconButton;
+	private readonly colorButton: IconColorButton;
+	private readonly deleteButton: IconButton;
+	private readonly saveButton: IconButton;
 
-	private stepCounter: StepCountLabel;
-	private phaseLabel: PhaseLabel;
-	private slowerButton: IconButton;
-	private fasterButton: IconButton;
+	private readonly stepCounter: StepCountLabel;
+	private readonly phaseLabel: PhaseLabel;
+	private readonly slowerButton: IconButton;
+	private readonly fasterButton: IconButton;
 	
 	private textArea = document.getElementById('save-textarea') as HTMLTextAreaElement;
 	private ipeArea = document.getElementById('ipe-textarea') as HTMLTextAreaElement;

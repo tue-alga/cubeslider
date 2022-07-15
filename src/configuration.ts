@@ -206,24 +206,29 @@ class Configuration {
     }
 
     /**
-     * Returns an array of all neighbors of a cube
+     * Returns a map of all neighbors of a cube
      */
-    getNeighbors(cube: Cube): Cube[] {
-        let neighbors: Cube[] = [];
-        let [x, y, z] = cube.p;
-        let positions: Position[] =
-        [   [x - 1, y, z],
-            [x + 1, y, z],
-            [x, y - 1, z],
-            [x, y + 1, z],
-            [x, y, z - 1],
-            [x, y, z + 1]
-        ]
-        positions.forEach(position => {
-           if (this.hasCube(position)) {
-               neighbors.push(this.getCube(position)!);
-           } 
-        });
+    getNeighborMap(p: Position): { [direction: string]: Cube | null } {
+        let [x, y, z] = p;
+        let neighbors: { [direction: string]: Cube | null } = {};
+        neighbors['x'] = this.getCube([x - 1, y, z]);
+        neighbors['X'] = this.getCube([x + 1, y, z]);
+        neighbors['y'] = this.getCube([x, y - 1, z]);
+        neighbors['Y'] = this.getCube([x, y + 1, z]);
+        neighbors['z'] = this.getCube([x, y, z - 1]);
+        neighbors['Z'] = this.getCube([x, y, z + 1]);
+        neighbors['xy'] = this.getCube([x - 1, y - 1, z]);
+        neighbors['xY'] = this.getCube([x - 1, y + 1, z]);
+        neighbors['xz'] = this.getCube([x - 1, y, z - 1]);
+        neighbors['xZ'] = this.getCube([x - 1, y, z + 1]);
+        neighbors['Xy'] = this.getCube([x + 1, y - 1, z]);
+        neighbors['XY'] = this.getCube([x + 1, y + 1, z]);
+        neighbors['Xz'] = this.getCube([x + 1, y, z - 1]);
+        neighbors['XZ'] = this.getCube([x + 1, y, z + 1]);
+        neighbors['yz'] = this.getCube([x, y - 1, z - 1]);
+        neighbors['yZ'] = this.getCube([x, y - 1, z + 1]);
+        neighbors['Yz'] = this.getCube([x, y + 1, z - 1]);
+        neighbors['YZ'] = this.getCube([x, y + 1, z + 1]);
         return neighbors;
     }
 

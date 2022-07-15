@@ -50,11 +50,16 @@ class GatherAlgorithm extends Algorithm {
                 
                 let lightestBranchCapacity = Number.MAX_VALUE;
                 let lightestBranchRoot = null;
-                for (let root of this.configuration.getNeighbors(cube)) {
-                    const capacity = this.configuration.capacity(cube, root);
-                    if (capacity < lightestBranchCapacity) {
-                        lightestBranchCapacity = capacity;
-                        lightestBranchRoot = root;
+                let neighbors = this.configuration.getNeighborMap(cube.p);
+                for (let neighborDirection in neighbors) {
+                    if (neighborDirection.length === 1 && neighbors[neighborDirection]) {
+                        // only check direct neighbors that exist, not edge adjacent neighbors
+                        let root = neighbors[neighborDirection]!;
+                        const capacity = this.configuration.capacity(cube, root);
+                        if (capacity < lightestBranchCapacity) {
+                            lightestBranchCapacity = capacity;
+                            lightestBranchRoot = root;
+                        }
                     }
                 }
                 if (lightestBranchCapacity < limit && lightestBranchCapacity > heaviestLightCubeCapacity) {
