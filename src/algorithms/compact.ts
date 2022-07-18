@@ -9,13 +9,22 @@ class CompactAlgorithm extends Algorithm {
         
         while (!this.configuration.isXYZMonotone()) {
             let freeMove = this.findFreeMove();
-            if (freeMove !== null) {
-                yield freeMove;
-            }
             let cornerMove = this.findCornerMove();
-            if (cornerMove !== null) {
-                yield cornerMove[0];
-                yield cornerMove[1];
+            // pick the highest cost of the two
+            if (freeMove !== null && cornerMove !== null) {
+                let freeMoveCost = this.cost(freeMove.sourcePosition());
+                let cornerMoveCost = this.cost(cornerMove[1].sourcePosition());
+                if (freeMoveCost > cornerMoveCost) {
+                    yield freeMove;
+                } else {
+                    yield* cornerMove;
+                }
+            } else {
+                if (freeMove !== null) {
+                    yield freeMove;
+                } else if (cornerMove !== null) {
+                    yield* cornerMove;
+                }
             }
         }
     }
