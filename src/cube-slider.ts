@@ -141,7 +141,7 @@ class CubeSlider {
 		this.showConnectivityButton.onClick(this.showConnectivity.bind(this));
 		this.topBar.addChild(this.showConnectivityButton);
 		
-		this.showAxesButton = new IconButton("show-connectivity", "Show axes", false);
+		this.showAxesButton = new IconButton("axes", "Show axes", false);
 		this.showAxesButton.onClick(this.showAxes.bind(this));
 		this.showAxesButton.setPressed(true);
 		this.topBar.addChild(this.showAxesButton);
@@ -183,12 +183,10 @@ class CubeSlider {
 		this.colorButton.onClick(
 			() => {
 				this.selection.forEach((cube) => {
-					if (cube instanceof Cube) {
-						cube.nextColor();
-						if (this.selection.length === 1) {
-							this.lastColor = cube.color;
-							this.colorButton.setColor(this.lastColor);
-						}
+					cube.nextColor();
+					if (this.selection.length === 1) {
+						this.lastColor = cube.color;
+						this.colorButton.setColor(this.lastColor);
 					}
 				});
 			}

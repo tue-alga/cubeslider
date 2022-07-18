@@ -19,13 +19,14 @@ app.renderer.resize(container.offsetWidth, container.offsetHeight);
 app.renderer.plugins.interaction.moveWhenInside = true;
 
 PIXI.Loader.shared.add([
+	'icons/axes.png',
 	'icons/play.png',
 	'icons/step.png',
 	'icons/pause.png',
 	'icons/reset.png',
 	'icons/pan.png',
 	'icons/select.png',
-	'icons/add-cube.png',
+	'icons/modify-cubes.png',
 	'icons/remove-cube.png',
 	'icons/color.png',
 	'icons/delete.png',
