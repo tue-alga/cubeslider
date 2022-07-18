@@ -83,6 +83,7 @@ class CubeSlider {
 	private readonly resetButton: IconButton;
 	private readonly algorithmButton: TextButton;
 	private readonly showConnectivityButton: IconButton;
+	private readonly showAxesButton: IconButton;
 	private readonly helpButton: IconButton;
 	private readonly cursorPositionLabel: CoordinateLabel;
 
@@ -139,6 +140,11 @@ class CubeSlider {
 		this.showConnectivityButton = new IconButton("show-connectivity", "Show connectivity", false);
 		this.showConnectivityButton.onClick(this.showConnectivity.bind(this));
 		this.topBar.addChild(this.showConnectivityButton);
+		
+		this.showAxesButton = new IconButton("show-connectivity", "Show axes", false);
+		this.showAxesButton.onClick(this.showAxes.bind(this));
+		this.showAxesButton.setPressed(true);
+		this.topBar.addChild(this.showAxesButton);
 
 		this.topBar.addChild(new Separator());
 
@@ -165,7 +171,7 @@ class CubeSlider {
 		//this.bottomBar.addChild(this.selectButton);
 
 		this.modifyCubeButton = new IconButton(
-			"add-cube", "Add Cubes", true, "C");
+			"modify-cubes", "Add Cubes", true, "C");
 		this.modifyCubeButton.setPressed(true);
 		this.modifyCubeButton.onClick(this.modifyCubesMode.bind(this));
 		this.bottomBar.addChild(this.modifyCubeButton);
@@ -681,6 +687,11 @@ class CubeSlider {
 		for (let cube of this.world.configuration.cubes) {
 			cube.updatePixi();
 		}
+	}
+	
+	showAxes(): void {
+		this.showAxesButton.setPressed(!this.showAxesButton.isPressed());
+		this.world.showAxes(this.showAxesButton.isPressed());
 	}
 
 	help(): void {

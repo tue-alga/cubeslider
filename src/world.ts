@@ -17,6 +17,7 @@ class World {
 	showComponentMarks = false;
 
 	ground: PIXI3D.Mesh3D[][] = [];
+	axes: PIXI3D.Mesh3D[] = [];
 	shadowLight: PIXI3D.ShadowCastingLight;
 	phantomCube: PIXI3D.Mesh3D;
 
@@ -97,22 +98,21 @@ class World {
 			this.ground.push(row);
 		}
 
-		
 		// show 2 axis.
 		// One transparent in front of everything (depthTest = false)
 		// One opaque
 		let axisWidth = 0.1;
 		let axisHeight = 6;
 		let axisScale = axisHeight / 2;
-		
+
 		for (let i = 0; i < 3; i++) {
 			let axisMaterialTransparent = new PIXI3D.StandardMaterial();
 			axisMaterialTransparent.alphaMode = PIXI3D.StandardMaterialAlphaMode.blend
 			axisMaterialTransparent.renderSortType = PIXI3D.MaterialRenderSortType.transparent;
 			axisMaterialTransparent.state.depthTest = false;
-			
+
 			let axisMaterialOpaque = new PIXI3D.StandardMaterial();
-			
+
 			let axisTransparent = this.pixi.addChild(PIXI3D.Mesh3D.createCube());
 			let axisOpaque = this.pixi.addChild(PIXI3D.Mesh3D.createCube());
 			switch (i) {
@@ -145,6 +145,8 @@ class World {
 			axisOpaque.material = axisMaterialOpaque;
 			axisTransparent.interactive = false;
 			axisOpaque.interactive = false;
+			this.axes.push(axisOpaque);
+			this.axes.push(axisTransparent);
 		}
 		
 
@@ -169,6 +171,12 @@ class World {
 	
 	static worldToPixiCoords(p: [number, number, number]) : [number, number, number] {
 		return [p[0], p[2], -p[1]];
+	}
+	
+	showAxes(b: boolean): void {
+		for (let axis of this.axes) {
+			axis.visible = b;
+		}
 	}
 	
 	showPhantomCube([x, y, z]: Position): void {
