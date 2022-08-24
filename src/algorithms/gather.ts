@@ -12,7 +12,7 @@ class GatherAlgorithm extends Algorithm {
 
     override *execute() : MoveGenerator {
         printStep('Gathering');
-        const limit = this.configuration.boundingBoxSpan();
+        const limit = 2 * this.configuration.boundingBoxSpan();
         
         let [lightCube, root] = this.findLightCube(limit);
         while (!this.configuration.isXYZMonotone() && lightCube !== null) {
