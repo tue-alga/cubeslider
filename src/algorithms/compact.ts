@@ -118,7 +118,7 @@ class CompactAlgorithm extends Algorithm {
                     }
 
                     if (helperNeighbor !== null && secondMoveDir !== null) {
-                        // there is a valid cornermove, check if it preserves chunkiness
+                        // there is a valid corner move, check if it preserves chunkiness
                         let firstMoveDir = cornerDirections.replace(secondMoveDir, "");
                         let firstMove = new Move(this.configuration, helperNeighbor.p, firstMoveDir);
                         let secondMove = new Move(this.configuration, cube.p, secondMoveDir);
@@ -131,7 +131,7 @@ class CompactAlgorithm extends Algorithm {
             }
         }
         
-        // no move has been returned yet, so no valid cornermove exists
+        // no move has been returned yet, so no valid corner move exists
         return null;
     }
 
@@ -140,7 +140,7 @@ class CompactAlgorithm extends Algorithm {
      * with the highest cost
      */
     findChainMove(): Move[] | null {
-        const [minX, minY, minZ, maxX, maxY, maxZ] = this.configuration.bounds();
+        const [minX, minY, minZ, ,] = this.configuration.bounds();
         // reverse order the cubes on cost and pick the first with a valid corner move
         let cubesOrdered: Cube[] = [...this.configuration.cubes].sort((c1,c2) => this.cost(c2.p) - this.cost(c1.p));
         

@@ -218,10 +218,7 @@ class GatherAlgorithm extends Algorithm {
         
         let pathComplete = this.configuration.shortestMovePath(leafCube.p, target);
 
-        if (pathDescendants.length === 0) {
-            // no path in the descendants possible (case 3)
-            // TODO
-        } else {
+        if (pathDescendants.length > 0) {
             let samePath = true;
             if (pathComplete.length !== pathDescendants.length) {
                 samePath = false;
@@ -232,7 +229,11 @@ class GatherAlgorithm extends Algorithm {
                     }
                 }
             }
-            if (!samePath) {
+            if (samePath) {
+
+                // both paths are possible, just execute this path (case 1)
+                yield* pathDescendants;
+            } else {
                 // The two paths are not the same, so we must be blocked somewhere
                 // go as far on the descendants path as is possible (case 2)
                 for (let m of pathDescendants) {
@@ -242,12 +243,63 @@ class GatherAlgorithm extends Algorithm {
                         break;
                     }
                 }
-            } else {
-                // both paths are possible, just execute this path (case 1)
-                yield* pathDescendants;
             }
+        } else {
+            // no path in the descendants possible (case 3)
+            yield* this.basketCase(leafCube);
         }
     }
+
+    /**
+     * Returns a list of all neighboring positions of a cube
+     */
+    nbrPositions(cube: Cube): Position[] {
+        return  [
+            [cube.p[0] - 1, cube.p[1], cube.p[2]],
+            [cube.p[0] + 1, cube.p[1], cube.p[2]],
+            [cube.p[0], cube.p[1] - 1, cube.p[2]],
+            [cube.p[0], cube.p[1] + 1, cube.p[2]],
+            [cube.p[0], cube.p[1], cube.p[2] - 1],
+            [cube.p[0], cube.p[1], cube.p[2] + 1]
+        ];
+    }
+    
+    /**
+     * The leaf cube cannot reach the target because it is blocked by a path between target and leaf (case 3)
+     * Go towards the first cube that has access to a different connected component.
+     */
+    *basketCase(leafCube: Cube): MoveGenerator {
+        let reachable = this.configuration.reachableCells(leafCube);
+        reachable.push(...this.nbrPositions(leafCube));
+        let newLightCube = this.configuration.findFirstCubeInDifferentComponent(leafCube, reachable);
+        if (newLightCube === null) {
+            throw Error("No cube has access to a different reachable component that the leafcube");
+        }
+        
+        let nbrsOfNewLightCube = this.nbrPositions(newLightCube);
+        
+        // the new light cube has access to 2 different connected components and therefore
+        // any neighbor that is reachable is a valid new target.
+        
+        let newTarget: Position | null = null;
+        for (let reachablePos of reachable) {
+            for (let possibleTarget of nbrsOfNewLightCube) {
+                if (reachablePos[0] === possibleTarget[0] &&
+                    reachablePos[1] === possibleTarget[1] &&
+                    reachablePos[2] === possibleTarget[2]) {
+                    newTarget = possibleTarget;
+                    break;
+                }
+            }
+        }
+        if (newTarget === null) {
+            throw new Error("No neighbor of the new light cube is reachable by the leaf cube.");
+        }
+
+        yield* this.configuration.shortestMovePath(leafCube.p, newTarget);
+    }
+    
+    
     
 }
 

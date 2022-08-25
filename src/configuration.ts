@@ -2,9 +2,8 @@
  * A single cell in the grid. Contains either a cube (with the ID stored) or
  * nothing (\c null).
  */
-import {Color, ComponentStatus, Cube, Position} from "./cube";
-import {Move, moveDirections, MoveGenerator} from "./move";
-import {World} from "./world";
+import {ComponentStatus, Cube, Position} from "./cube";
+import {Move, moveDirections} from "./move";
 
 type WorldCell = {
     CubeId: number | null;
@@ -137,8 +136,7 @@ class Configuration {
             cube.updatePosition(time, timeStep);
         });
         if (this.currentMove) {
-            const p = this.currentMove.position;
-            this.getCube(p)?.updatePosition(time, timeStep, this.currentMove);
+            this.getCube(this.currentMove.position)?.updatePosition(time, timeStep, this.currentMove);
         }
     }
 
@@ -513,14 +511,14 @@ class Configuration {
         // Convert the list of edges to a chunk per cube
         // We first remove chunks with 1 or 0 edges
         // The last chunk will always have 0 edges
-        let edgeChunksOfPropperSize = Array();
+        let edgeChunksOfProperSize = Array();
         for (let i = 0; i < edgeChunks.length; i++) {
             if (edgeChunks[i].length > 1) {
-                edgeChunksOfPropperSize.push(edgeChunks[i]);
+                edgeChunksOfProperSize.push(edgeChunks[i]);
             }
         }
-        for (let i = 0; i < edgeChunksOfPropperSize.length; i++) {
-            let edgeChunk = edgeChunksOfPropperSize[i];
+        for (let i = 0; i < edgeChunksOfProperSize.length; i++) {
+            let edgeChunk = edgeChunksOfProperSize[i];
             for (let edge = 0; edge < edgeChunk.length; edge++) {
                 for (let j = 0; j < edgeChunk[edge].length; j++) {
                     let v = edgeChunk[edge][j];
@@ -795,6 +793,96 @@ class Configuration {
         }
 
         return seen.map(c => !c);
+    }
+
+    /**
+     * Find all positions a specific cube can reach without the rest moving
+     * @param s the cube to check
+     */
+    reachableCells(s: Cube): Position[] {
+        // do a bfs over the move graph starting from s
+        // seen has positions "1,1,1" (strings) as keys
+        let seen: { [key: string]: { 'seen': boolean, 'position': Position } } = {};
+        let queue: Position[] = [s.p];
+
+        while (queue.length !== 0) {
+            const location = queue.shift()!;
+            if (seen[location[0] + "," + location[1] + "," + location[2]]) {
+                continue;
+            }
+            seen[location[0] + "," + location[1] + "," + location[2]] = {
+                'seen': true,
+                'position': location
+            }
+
+            const moves = this.validMovesFrom(location);
+            moves.forEach(function (move) {
+                queue.push(move.targetPosition());
+            });
+        }
+
+        let reachable: Position[] = [];
+        for (let key in seen) {
+            let position = seen[key]['position'];
+            reachable.push(position);
+        }
+
+        return reachable;
+    }
+
+    /**
+     * Given a cube and a set of reachable positions, find the closest cube to the cube s that
+     * has a nbr that is not in those reachable positions.
+     */
+    findFirstCubeInDifferentComponent(s: Cube, reachable: Position[]): Cube | null{
+        // do a BFS from the cube s, counting the Cubes, but disregard s
+
+        let seen = Array(this.cubes.length).fill(false);
+
+        const rootId = this.getCubeId(s.p)!
+        let queue = [rootId];
+
+        while (queue.length !== 0) {
+            const cubeId = queue.shift()!;
+            if (seen[cubeId]) {
+                continue;
+            }
+
+            const cube = this.cubes[cubeId];
+            seen[cubeId] = true;
+
+            const nbrs: Position[] = [
+                [cube.p[0] - 1, cube.p[1], cube.p[2]],
+                [cube.p[0] + 1, cube.p[1], cube.p[2]],
+                [cube.p[0], cube.p[1] - 1, cube.p[2]],
+                [cube.p[0], cube.p[1] + 1, cube.p[2]],
+                [cube.p[0], cube.p[1], cube.p[2] - 1],
+                [cube.p[0], cube.p[1], cube.p[2] + 1]
+            ];
+
+            for (let nbrPosition of nbrs) {
+                let cell = this.getCell(nbrPosition)!;
+                let contained = false;
+                for (let reachablePosition of reachable) {
+                    if (reachablePosition[0] === nbrPosition[0] &&
+                        reachablePosition[1] === nbrPosition[1] &&
+                        reachablePosition[2] === nbrPosition[2]) {
+                        contained = true;
+                        break;
+                    }
+                }
+                if (!contained) {
+                    // this nbr empty cell is not reachable from the cube
+                    // and is therefore in a different connected component
+                    return cube;
+                }
+                if (cell.CubeId !== null) {
+                    queue.push(cell.CubeId);
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
