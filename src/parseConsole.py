@@ -12,5 +12,5 @@ with open(sys.argv[1], encoding="utf-8") as console_log:
         if len(matches) == 2 and matches[0] != "index":
             json += "[" + matches[0] + ", " + matches[1] + "],"
     json = json[:-1] + "]"
-    with open("/home/ifidefix/Documents/interestingConfs/doublebasketsolved", "w+") as outputfile:
-        outputfile.write(json)
+    with open(sys.argv[2], "w+") as output_file:
+        output_file.write(json)
