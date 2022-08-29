@@ -1,7 +1,7 @@
 import { World, } from '../world';
 import {Cube, ComponentStatus, Position} from '../cube';
 import { Algorithm } from './algorithm';
-import {MoveGenerator} from "../move";
+import {Move, MoveGenerator} from "../move";
 import {Configuration} from "../configuration";
 
 class GatherAlgorithm extends Algorithm {
@@ -11,6 +11,9 @@ class GatherAlgorithm extends Algorithm {
     }
 
     override *execute() : MoveGenerator {
+        // printStep('Breaking antipodes');
+        // yield* this.breakAntipodes();
+        
         printStep('Gathering');
         const limit = 2 * this.configuration.boundingBoxSpan();
         
@@ -31,6 +34,34 @@ class GatherAlgorithm extends Algorithm {
             this.configuration.markComponents();
             [lightCube, root] = this.findLightCube(limit);
         }
+    }
+
+    /**
+     * Breaks antipodes by letting one of its neighbors move down.
+     */
+    *breakAntipodes(): MoveGenerator {
+        for (let cube of this.configuration.cubes) {
+            if (this.isAntipode(cube)) {
+                // move one of the neighbors down a spot
+                let cubeToMovePosition: Position = [...cube.p];
+                cubeToMovePosition[0]--;
+                yield new Move(this.configuration, cubeToMovePosition, 'z');
+            }
+        }
+    }
+
+    /**
+     * Test if a cube is an antipode with at least two of its neighbors in the same chunk
+     */
+    isAntipode(cube: Cube): boolean {
+        let has = this.configuration.hasNeighbors(cube.p);
+        let nbrs = this.configuration.getNeighborMap(cube.p);
+        let chunkId = cube.chunkId;
+        return has['x'] && has['y'] && has['z'] &&
+            !has['X'] && !has['Y'] && !has['Z'] &&
+            !has['xy'] && !has['xz'] && !has['yz'] &&
+            chunkId !== -1 &&
+            nbrs['x']?.chunkId === chunkId && nbrs['y']?.chunkId === chunkId;
     }
 
     /**

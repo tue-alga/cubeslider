@@ -386,6 +386,10 @@ class CubeSlider {
 				this.stepButton.setEnabled(true);
 			}
 		}
+		
+		if (this.world.simulationMode === SimulationMode.PAUSED) {
+			this.world.disableMovingCube();
+		}
 
 		while (this.time >= this.timeStep) {
 			// first actually execute the current move
@@ -407,6 +411,7 @@ class CubeSlider {
 				if (proposedMove.done) {
 					console.log(`Time step ${this.timeStep}. No move left, so pausing the simulation.`);
 					this.world.configuration.currentMove = null;
+					this.world.disableMovingCube();
 					this.run();  // pause
 					this.runButton.setEnabled(false);
 					this.stepButton.setEnabled(false);
@@ -462,6 +467,12 @@ class CubeSlider {
 		}
 
 		this.world.configuration.updatePositions(this.time, this.timeStep);
+		
+		// update the movingCube.
+		if (this.world.configuration.currentMove) {
+			let cube = this.world.configuration.getCube(this.world.configuration.currentMove.position)!;
+			this.world.updateMovingCube(cube);
+		}
 	}
 
 	worldClickHandler(e: PIXI.InteractionEvent): void {
@@ -600,6 +611,7 @@ class CubeSlider {
 
 	reset(): void {
 		this.world.simulationMode = SimulationMode.RESET;
+		this.world.disableMovingCube();
 		this.runButton.setIcon("play");
 		this.runButton.setTooltip("Run simulation");
 		this.runButton.setEnabled(true);

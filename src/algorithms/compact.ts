@@ -10,7 +10,6 @@ class CompactAlgorithm extends Algorithm {
         while (!this.configuration.isXYZMonotone()) {
             let freeMove = this.findFreeMove();
             let cornerMove = this.findCornerMove();
-            let chainMove = this.findChainMove();
 
             let moves: Move[][] = [];
             if (freeMove !== null) {
@@ -19,21 +18,21 @@ class CompactAlgorithm extends Algorithm {
             if (cornerMove !== null) {
                 moves.push(cornerMove);
             }
-            if (chainMove !== null) {
-                moves.push(chainMove);
-            }
 
             let maxCost = -1;
             let maxMove: Move[] | null = null;
             for (let movePath of moves) {
-                let cost = this.cost(movePath[0].sourcePosition());
+                let cost = this.cost(movePath[0].sourcePosition(), this.configuration.bounds());
                 if (cost > maxCost) {
                     maxCost = cost;
                     maxMove = movePath;
                 }
             }
-
-            if (maxMove !== null) {
+            
+            let chainMove = this.findChainMove(maxCost);
+            if (chainMove) {
+                yield* chainMove;
+            } else if (maxMove !== null) {
                 yield* maxMove;
             } else {
                 // no moves possible to compact
@@ -45,8 +44,7 @@ class CompactAlgorithm extends Algorithm {
     /**
      * The cost function for the moves
      */
-    cost(p: Position): number {
-        let bounds = this.configuration.bounds();
+    cost(p: Position, bounds: [number, number, number, number, number, number]): number {
         let [x, y, z] = [p[0] - bounds[0], p[1] - bounds[1], p[2] - bounds[2]];
         return x + 2 * y + 4 * z;
     }
@@ -67,15 +65,17 @@ class CompactAlgorithm extends Algorithm {
      */
     findFreeMove(): Move | null {
         // reverse order the cubes on cost and pick the first one that has a valid free move.
-        let cubesOrdered: Cube[] = [...this.configuration.cubes].sort((c1,c2) => this.cost(c2.p) - this.cost(c1.p));
+        let bounds = this.configuration.bounds();
+        let cubesOrdered: Cube[] = [...this.configuration.cubes].sort((c1,c2) => this.cost(c2.p, bounds) - this.cost(c1.p, bounds));
         
         for (let cube of cubesOrdered) {
             if (cube.componentStatus !== ComponentStatus.CHUNK_STABLE) continue;
             for (let direction of moveDirections) {
                 let potentialMove = new Move(this.configuration, cube.p, direction);
                 let target = potentialMove.targetPosition();
+                let bounds = this.configuration.bounds();
                 if (potentialMove.isValid() &&
-                    this.cost(cube.p) > this.cost(target) &&
+                    this.cost(cube.p, bounds) > this.cost(target, bounds) &&
                     this.inBounds(target) &&
                     this.preservesChunkiness([potentialMove])) {
                     return potentialMove;
@@ -94,7 +94,8 @@ class CompactAlgorithm extends Algorithm {
      */
     findCornerMove(): [Move, Move] | null {
         // reverse order the cubes on cost and pick the first with a valid corner move
-        let cubesOrdered: Cube[] = [...this.configuration.cubes].sort((c1,c2) => this.cost(c2.p) - this.cost(c1.p));
+        let bounds = this.configuration.bounds();
+        let cubesOrdered: Cube[] = [...this.configuration.cubes].sort((c1,c2) => this.cost(c2.p, bounds) - this.cost(c1.p, bounds));
 
         let possibleCornerMoves = ['xy', 'yz', 'xz', 'Xz', 'Yz', 'xY'];
         for (let cube of cubesOrdered) {
@@ -138,13 +139,17 @@ class CompactAlgorithm extends Algorithm {
     /**
      * From all possible chain moves (reducing the total cost), this finds the move that moves the cube
      * with the highest cost
+     * @param limit finding chainmoves is a heavy operation. If a valid move with cost limit has already been found,
+     * only search for chainmoves that are better to avoid searching all chain moves.
      */
-    findChainMove(): Move[] | null {
+    findChainMove(limit?: number): Move[] | null {
         const [minX, minY, minZ, ,] = this.configuration.bounds();
         // reverse order the cubes on cost and pick the first with a valid corner move
-        let cubesOrdered: Cube[] = [...this.configuration.cubes].sort((c1,c2) => this.cost(c2.p) - this.cost(c1.p));
+        let bounds = this.configuration.bounds();
+        let cubesOrdered: Cube[] = [...this.configuration.cubes].sort((c1,c2) => this.cost(c2.p, bounds) - this.cost(c1.p, bounds));
         
         for (let cube of cubesOrdered) {
+            if (limit && this.cost(cube.p, bounds) <= limit) break;
             if (cube.componentStatus === ComponentStatus.CHUNK_STABLE) {
                 if (cube.p[0] === minX) {
                     let move = this.checkZChainMove(cube);

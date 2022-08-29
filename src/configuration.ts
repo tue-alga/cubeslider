@@ -621,6 +621,7 @@ class Configuration {
         }
     }
 
+    
     private neighborCubesIDs(i: number) : number[] {
         let nbrs = Array();
         let x = this.cubes[i].p[0];

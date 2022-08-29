@@ -5,6 +5,7 @@ import * as PIXI3D from 'pixi3d';
 import {Color, Cube, Position} from './cube';
 import {Configuration} from "./configuration";
 import {SimulationMode} from "./cube-slider";
+import {StandardMaterial} from "pixi3d";
 
 
 /**
@@ -18,6 +19,7 @@ class World {
 
 	ground: PIXI3D.Mesh3D[][] = [];
 	axes: PIXI3D.Mesh3D[] = [];
+	movingCube: Cube = new Cube(this, [1, 1, 1], Color.GRAY, false);
 	shadowLight: PIXI3D.ShadowCastingLight;
 	phantomCube: PIXI3D.Mesh3D;
 
@@ -107,7 +109,7 @@ class World {
 
 		for (let i = 0; i < 3; i++) {
 			let axisMaterialTransparent = new PIXI3D.StandardMaterial();
-			axisMaterialTransparent.alphaMode = PIXI3D.StandardMaterialAlphaMode.blend
+			axisMaterialTransparent.alphaMode = PIXI3D.StandardMaterialAlphaMode.blend;
 			axisMaterialTransparent.renderSortType = PIXI3D.MaterialRenderSortType.transparent;
 			axisMaterialTransparent.state.depthTest = false;
 
@@ -147,6 +149,16 @@ class World {
 			axisOpaque.interactive = false;
 			this.axes.push(axisOpaque);
 			this.axes.push(axisTransparent);
+
+			let movingCubeMaterial = new PIXI3D.StandardMaterial();
+			movingCubeMaterial.alphaMode = PIXI3D.StandardMaterialAlphaMode.blend;
+			movingCubeMaterial.renderSortType = PIXI3D.MaterialRenderSortType.transparent;
+			movingCubeMaterial.state.depthTest = false;
+			movingCubeMaterial.baseColor.a = 0.4;
+			this.movingCube.mesh.material = movingCubeMaterial;
+			this.movingCube.mesh.interactive = false;
+			this.pixi.addChild(this.movingCube.pixi);
+			this.movingCube.mesh.visible = false
 		}
 		
 
@@ -207,6 +219,30 @@ class World {
 	removeCube(cube: Cube): void {
 		this.configuration.removeCube(cube);
 		this.pixi.removeChild(cube.pixi);
+	}
+	
+	updateMovingCube(cube: Cube): void {
+		this.movingCube.mesh.visible = true;
+		let movingCubeMaterial = new PIXI3D.StandardMaterial();
+		movingCubeMaterial.alphaMode = PIXI3D.StandardMaterialAlphaMode.blend;
+		movingCubeMaterial.renderSortType = PIXI3D.MaterialRenderSortType.transparent;
+		movingCubeMaterial.state.depthTest = false;
+		// movingCubeMaterial.baseColor = new PIXI3D.Color(1, 1, 0.2, 0.4);
+		let originColor = (cube.mesh.material as StandardMaterial).baseColor
+		movingCubeMaterial.baseColor = new PIXI3D.Color(originColor.r, originColor.g, originColor.b, 0.3);
+		// movingCubeMaterial.baseColor.a = 0.4;
+		this.movingCube.mesh.material = movingCubeMaterial;
+		
+		this.movingCube.pixi.x = cube.pixi.x;
+		this.movingCube.pixi.y = cube.pixi.y;
+		this.movingCube.pixi.z = cube.pixi.z;
+	}
+	
+	disableMovingCube(): void {
+		this.movingCube.mesh.visible = false;
+		this.movingCube.pixi.x = 0;
+		this.movingCube.pixi.y = 0;
+		this.movingCube.pixi.z = 0;
 	}
 
 	/**

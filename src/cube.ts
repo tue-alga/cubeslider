@@ -57,7 +57,7 @@ class Cube {
 	foregroundPixi = new PIXI.Graphics();
 	selected: boolean = false;
 
-	constructor(private world: World | null, p: [number, number, number], color?: Color) {
+	constructor(private world: World | null, p: [number, number, number], color?: Color, interactive?: boolean) {
 		this.p = [p[0], p[1], p[2]];
 		this.resetPosition = [p[0], p[1], p[2]];
 		this.color = (color === undefined) ? new Color(Color.BASE_COLOR.r, Color.BASE_COLOR.g, Color.BASE_COLOR.b) : color;
@@ -68,8 +68,7 @@ class Cube {
 		this.mesh = PIXI3D.Model.from(PIXI.Loader.shared.resources["cube.gltf"]['gltf']).meshes[0];
 
 
-		if (world !== null) {
-
+		if (world !== null) {			
 			let material = new PIXI3D.StandardMaterial();
 			material.baseColor = Color.BASE_COLOR;
 			material.exposure = 1.5;
@@ -81,12 +80,14 @@ class Cube {
 			this.mesh.position.set(0, 0, 0);
 			this.pixi.addChild(this.mesh);
 		
-			this.addShield([-1, 0, 0], [0, 0, 90]);  // x
-			this.addShield([1, 0, 0], [0, 0, -90]);  // X
-			this.addShield([0, -1, 0], [90, 0, 0]);  // y
-			this.addShield([0, 1, 0], [-90, 0, 0]);  // Y
-			this.addShield([0, 0, -1], [180, 0, 0]);  // z
-			this.addShield([0, 0, 1], [0, 0, 0]);  // Z
+			if (interactive === undefined || interactive) {
+				this.addShield([-1, 0, 0], [0, 0, 90]);  // x
+				this.addShield([1, 0, 0], [0, 0, -90]);  // X
+				this.addShield([0, -1, 0], [90, 0, 0]);  // y
+				this.addShield([0, 1, 0], [-90, 0, 0]);  // Y
+				this.addShield([0, 0, -1], [180, 0, 0]);  // z
+				this.addShield([0, 0, 1], [0, 0, 0]);  // Z
+			}
 
 			this.updatePixi();
 		}
