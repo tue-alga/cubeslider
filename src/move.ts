@@ -148,7 +148,7 @@ class Move {
         if (!this.isValidIgnoreConnectivity()) {
             return false;
         }
-        if (!this.configuration.isConnected(this.position)) {
+        if (!this.configuration.isConnected([], this.position)) {
             return false;
         }
         return true;

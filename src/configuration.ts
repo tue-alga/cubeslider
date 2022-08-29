@@ -152,8 +152,19 @@ class Configuration {
             cube.p = [...cube.resetPosition];
             this.getCell(cube.p).CubeId = i;
         }
+        
+        
         this.currentMove = null;
         this.markComponents();
+    }
+    
+    sortCubes() {
+        this.cubes.sort((a, b) => a.p[2] - b.p[2]);
+        this.cubes.sort((a, b) => a.p[1] - b.p[1]);
+        this.cubes.sort((a, b) => a.p[0] - b.p[0]);
+        for (let i = 0; i < this.cubes.length; i++) {
+            this.getCell(this.cubes[i].p).CubeId = i;
+        }
     }
 
     /**
@@ -186,20 +197,20 @@ class Configuration {
     /**
      * Returns a neighbor of the give cube
      */
-    getOneNeighbor(cube: Cube): Cube | null {
+    getOneNeighbor(cube: Cube, cuts: [number, number][]): Cube | null {
         const [x, y, z] = cube.p;
         let neighbor = this.getCube([x + 1, y, z]);
-        if (neighbor) return neighbor;
+        if (neighbor && !this.cutsContains(cuts, this.getCubeId(cube.p)!, this.getCubeId([x + 1, y, z])!)) return neighbor;
         neighbor = this.getCube([x - 1, y, z]);
-        if (neighbor) return neighbor;
+        if (neighbor && !this.cutsContains(cuts, this.getCubeId(cube.p)!, this.getCubeId([x - 1, y, z])!)) return neighbor;
         neighbor = this.getCube([x, y + 1, z]);
-        if (neighbor) return neighbor;
+        if (neighbor && !this.cutsContains(cuts, this.getCubeId(cube.p)!, this.getCubeId([x, y + 1, z])!)) return neighbor;
         neighbor = this.getCube([x, y - 1, z]);
-        if (neighbor) return neighbor;
+        if (neighbor && !this.cutsContains(cuts, this.getCubeId(cube.p)!, this.getCubeId([x, y - 1, z])!)) return neighbor;
         neighbor = this.getCube([x, y, z + 1]);
-        if (neighbor) return neighbor;
+        if (neighbor && !this.cutsContains(cuts, this.getCubeId(cube.p)!, this.getCubeId([x, y, z + 1])!)) return neighbor;
         neighbor = this.getCube([x, y, z - 1]);
-        if (neighbor) return neighbor;
+        if (neighbor && !this.cutsContains(cuts, this.getCubeId(cube.p)!, this.getCubeId([x, y, z - 1])!)) return neighbor;
         return null;
     }
 
@@ -240,7 +251,7 @@ class Configuration {
     validMovesFrom(p: Position): Move[] {
         let moves: Move[] = [];
 
-        if (!this.isConnected(p)) {
+        if (!this.isConnected([], p)) {
             return [];
         }
 
@@ -352,8 +363,9 @@ class Configuration {
     /**
      * Checks if the configuration is connected. If the skip parameter is
      * provided, that Cube is ignored (considered as non-existing).
+     * @param cuts a list of pairs of neighboring cubes that are not supposed to be considered neighbors
      */
-    isConnected(skip?: Position): boolean {
+    isConnected(cuts: [number, number][] = [], skip?: Position): boolean {
         if (!this.cubes.length) {
             return true;
         }
@@ -400,8 +412,8 @@ class Configuration {
                 this.getCell([cube.p[0], cube.p[1], cube.p[2] - 1]),
                 this.getCell([cube.p[0], cube.p[1], cube.p[2] + 1])
             ];
-            neighbors.forEach(function (c) {
-                if (c.CubeId) {
+            neighbors.forEach((c) => {
+                if (c.CubeId && !this.cutsContains(cuts, c.CubeId, cubeId)) {
                     queue.push(c.CubeId);
                 }
             });
@@ -448,9 +460,10 @@ class Configuration {
     /**
      * Colors the Cubes by their connectivity, and set their connectivity
      * fields
+     * @param cuts a list of pairs of neighboring cubes that are not supposed to be considered neighbors 
      */
-    markComponents(): void {
-        const [components, chunkIds, stable] = this.findComponents();
+    markComponents(cuts: [number, number][] = []): void {        
+        const [components, chunkIds, stable] = this.findComponents(cuts);
         for (let i = 0; i < this.cubes.length; i++) {
             if (components[i] === 2) {
                 this.cubes[i].setComponentStatus(stable[i] ? ComponentStatus.CHUNK_STABLE : ComponentStatus.CHUNK_CUT);
@@ -481,13 +494,13 @@ class Configuration {
      * If the configuration is disconnected, this returns -1 for both component
      * status and chunk IDs.
      */
-    findComponents(): [number[], number[], boolean[]] {
+    findComponents(cuts: [number, number][]): [number[], number[], boolean[]] {
         let components = Array(this.cubes.length).fill(-1);
         let chunkIds = Array(this.cubes.length).fill(-1);
-        const stable = this.findCubeStability();
+        const stable = this.findCubeStability(cuts);
 
         // don't try to find components if the configuration is disconnected
-        if (!this.cubes.length || !this.isConnected()) {
+        if (!this.cubes.length || !this.isConnected(cuts)) {
             return [components, chunkIds, stable];
         }
 
@@ -501,7 +514,7 @@ class Configuration {
         let edgeStack = Array();
 
         // Start the search from the first cube in the array
-        this.findComponentsRecursive(0, discovery, low, edgeStack, parent, 0, edgeChunks);
+        this.findComponentsRecursive(0, discovery, low, edgeStack, parent, 0, edgeChunks, cuts);
 
         // If the edgeStack is not empty, store all remaining edges in the last component
         while (edgeStack.length > 0) {
@@ -545,8 +558,8 @@ class Configuration {
         // A loose cube is a cube with only 1 neighbor that is in a chunk
         for (let i = 0; i < components.length; i++) {
             if (components[i] === 1 &&
-                this.degree(this.cubes[i]) === 1) {
-                const neighbor = this.getOneNeighbor(this.cubes[i])!;
+                this.neighborCubesIDs(i, cuts).length === 1) {
+                const neighbor = this.getOneNeighbor(this.cubes[i], cuts)!;
                 const neighborIndex = this.getCubeId(neighbor.p)!;
                 if (components[neighborIndex] === 2) {
                     components[i] = 2;
@@ -559,7 +572,7 @@ class Configuration {
         for (let i = 0; i < components.length; i++) {
             if (components[i] === 2 && !stable[i]) {
                 const rootIndex = i === 0 ? 1 : 0;
-                const capacity = this.capacity(this.cubes[i], this.cubes[rootIndex]);
+                const capacity = this.capacity(this.cubes[i], this.cubes[rootIndex], cuts);
                 if (capacity !== 1 && capacity !== this.cubes.length - 2) {
                     // this square cuts more than a single cube, and is therefore a connector instead
                     components[i] = 3;
@@ -572,7 +585,8 @@ class Configuration {
 
     private findComponentsRecursive(u: number, discovery: number[],
                                     low: number[], edgeStack: [number, number][],
-                                    parent: number[], time: number, edgeChunks: [number, number][][]) {
+                                    parent: number[], time: number, edgeChunks: [number, number][][],
+                                    cuts: [number, number][]) {
         // Initialize discovery time and low value
         time += 1;
         discovery[u] = time;
@@ -583,7 +597,7 @@ class Configuration {
         // Go through all neighbors of vertex u.
         // There are 6 neighbor spots to check
 
-        let nbrs = this.neighborCubesIDs(u);
+        let nbrs = this.neighborCubesIDs(u, cuts);
         for (let v of nbrs) {
             // v is the current neighbor of u
 
@@ -594,7 +608,7 @@ class Configuration {
 
                 // store the edge in subtree stack
                 edgeStack.push([u, v]);
-                this.findComponentsRecursive(v, discovery, low, edgeStack, parent, time, edgeChunks);
+                this.findComponentsRecursive(v, discovery, low, edgeStack, parent, time, edgeChunks, cuts);
 
                 // check if the subtree rooted at v has a connection to one of the ancestors of u
                 if (low[u] > low[v]) {
@@ -622,30 +636,41 @@ class Configuration {
     }
 
     
-    private neighborCubesIDs(i: number) : number[] {
+    private neighborCubesIDs(i: number, cuts: [number, number][]) : number[] {
         let nbrs = Array();
         let x = this.cubes[i].p[0];
         let y = this.cubes[i].p[1];
         let z = this.cubes[i].p[2];
-        if (this.hasCube([x - 1, y, z])) {
+        if (this.hasCube([x - 1, y, z]) && !this.cutsContains(cuts, this.getCubeId([x - 1, y, z])!, i)) {
             nbrs.push(this.getCubeId([x - 1, y, z]));
         }
-        if (this.hasCube([x + 1, y, z])) {
+        if (this.hasCube([x + 1, y, z]) && !this.cutsContains(cuts, this.getCubeId([x + 1, y, z])!, i)) {
             nbrs.push(this.getCubeId([x + 1, y, z]));
         }
-        if (this.hasCube([x, y- 1, z])) {
+        if (this.hasCube([x, y- 1, z]) && !this.cutsContains(cuts, this.getCubeId([x, y - 1, z])!, i)) {
             nbrs.push(this.getCubeId([x, y - 1, z]));
         }
-        if (this.hasCube([x, y + 1, z])) {
+        if (this.hasCube([x, y + 1, z]) && !this.cutsContains(cuts, this.getCubeId([x, y + 1, z])!, i)) {
             nbrs.push(this.getCubeId([x, y + 1, z]));
         }
-        if (this.hasCube([x, y, z - 1])) {
+        if (this.hasCube([x, y, z - 1]) && !this.cutsContains(cuts, this.getCubeId([x, y, z - 1])!, i)) {
             nbrs.push(this.getCubeId([x, y, z - 1]));
         }
-        if (this.hasCube([x, y, z + 1])) {
+        if (this.hasCube([x, y, z + 1]) && !this.cutsContains(cuts, this.getCubeId([x, y, z + 1])!, i)) {
             nbrs.push(this.getCubeId([x, y, z + 1]));
         }
         return nbrs;
+    }
+
+    /**
+     * Checks if a list of cuts contains a specific pair of vertices
+     */
+    private cutsContains(cuts: [number, number][], i: number, j: number) {
+        for (let cut of cuts) {
+            if (cut[0] === i && cut[1] === j) return true;
+            if (cut[1] === i && cut[0] === j) return true;
+        }
+        return false;
     }
 
     /**
@@ -653,8 +678,9 @@ class Configuration {
      *
      * Returns a list of booleans for each Cube: true if the corresponding Cube
      * is stable; false if it is a cut Cube.
+     * @param cuts a list of pairs of neighboring cubes that are not supposed to be considered neighbors 
      */
-    findCubeStability(): boolean[] {
+    findCubeStability(cuts: [number, number][]): boolean[] {
         if (!this.cubes.length) {
             return [];
         }
@@ -663,14 +689,15 @@ class Configuration {
         let depth = Array(this.cubes.length).fill(-1);
         let low = Array(this.cubes.length).fill(-1);
         let stable = Array(this.cubes.length).fill(true);
-        this.findCubeStabilityRecursive(0, 0, seen, parent, depth, low, stable);
+        this.findCubeStabilityRecursive(0, 0, seen, parent, depth, low, stable, cuts);
         return stable;
     }
 
     private findCubeStabilityRecursive(i: number, d: number,
                                        seen: boolean[], parent: (number | null)[],
                                        depth: number[], low: number[],
-                                       stable: boolean[]): void {
+                                       stable: boolean[],
+                                       cuts: [number, number][]): void {
 
         seen[i] = true;
         depth[i] = d;
@@ -688,17 +715,17 @@ class Configuration {
         const self = this;
         let cutCube = false;
         let childCount = 0;
-        neighbors.forEach(function (c) {
-            if (c.CubeId !== null && !seen[c.CubeId]) {
+        neighbors.forEach((c) => {
+            if (c.CubeId !== null && !seen[c.CubeId] && !this.cutsContains(cuts, c.CubeId, i)) {
                 parent[c.CubeId] = i;
                 self.findCubeStabilityRecursive(c.CubeId, d + 1,
-                    seen, parent, depth, low, stable);
+                    seen, parent, depth, low, stable, cuts);
                 childCount++;
                 if (low[c.CubeId] >= depth[i]) {
                     cutCube = true;
                 }
                 low[i] = Math.min(low[i], low[c.CubeId]);
-            } else if (c.CubeId !== null && c.CubeId != parent[i]) {
+            } else if (c.CubeId !== null && c.CubeId != parent[i] && !this.cutsContains(cuts, c.CubeId, i)) {
                 low[i] = Math.min(low[i], depth[c.CubeId]);
             }
         });
@@ -712,8 +739,9 @@ class Configuration {
     /**
      * Given a Cube, determines the number of Cubes in its descendant(s),
      * Viewed from a different Cube called "root"
+     * @param cuts a list of pairs of neighboring cubes that are not supposed to be considered neighbors 
      */
-    capacity(s: Cube, root: Cube): number {
+    capacity(s: Cube, root: Cube, cuts: [number, number][] = []): number {
         // do a BFS from the root, counting the Cubes, but disregard s
 
         let seen = Array(this.cubes.length).fill(false);
@@ -745,8 +773,8 @@ class Configuration {
                 this.getCell([cube.p[0], cube.p[1], cube.p[2] + 1])
             ];
 
-            nbrs.forEach(function (c) {
-                if (c.CubeId !== null) {
+            nbrs.forEach((c) => {
+                if (c.CubeId !== null && !this.cutsContains(cuts, c.CubeId, cubeId)) {
                     queue.push(c.CubeId);
                 }
             });
@@ -757,8 +785,9 @@ class Configuration {
 
     /**
      * Return an array with for each Cube if it contributes to the capacity of s
+     * @param cuts a list of pairs of neighboring cubes that are not supposed to be considered neighbors
      */
-    capacityCubes(s: Cube, root: Cube): boolean[] {
+    capacityCubes(s: Cube, root: Cube, cuts: [number, number][] = []): boolean[] {
         // do a BFS from the root, counting the Cubes, but disregard s
 
         let seen = Array(this.cubes.length).fill(false);
@@ -786,8 +815,8 @@ class Configuration {
                 this.getCell([cube.p[0], cube.p[1], cube.p[2] + 1])
             ];
 
-            nbrs.forEach(function (c) {
-                if (c.CubeId !== null) {
+            nbrs.forEach((c) => {
+                if (c.CubeId !== null && !this.cutsContains(cuts, c.CubeId, cubeId)) {
                     queue.push(c.CubeId);
                 }
             });

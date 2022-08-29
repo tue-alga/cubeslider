@@ -568,6 +568,11 @@ class CubeSlider {
 			this.runButton.setTooltip("Run simulation");
 			this.stepButton.setEnabled(true);
 		} else {
+			if (this.world.simulationMode === SimulationMode.RESET) {
+				// sort the cubes array once to make the algorithm button deterministic
+				this.world.configuration.sortCubes();
+			}
+			
 			if (!this.world.configuration.isConnected()) {
 				alert("The configuration is not connected. " +
 					"Make sure to enter a connected configuration before running the algorithm.");
@@ -592,6 +597,10 @@ class CubeSlider {
 	}
 
 	step(): void {
+		if (this.world.simulationMode === SimulationMode.RESET) {
+			// sort the cubes array once to make the algorithm button deterministic
+			this.world.configuration.sortCubes();
+		}
 		this.runUntil = Math.floor(this.time) + 1;
 		this.world.simulationMode = SimulationMode.RUNNING;
 		this.runButton.setIcon("pause");
