@@ -946,7 +946,7 @@ class Configuration {
                 this.getCell([cube.p[0], cube.p[1], cube.p[2] + 1])
             ];
 
-            nbrs.forEach(function (c) {
+            nbrs.forEach((c) => {
                 if (c.CubeId !== null) {
                     queue.push(c.CubeId);
                 }

@@ -17,13 +17,16 @@ class GatherAlgorithm extends Algorithm {
         printStep('Gathering');
         const limit = 2 * this.configuration.boundingBoxSpan();
         
-        let [lightCube, root] = this.findLightCube(limit);
+        let cuts = this.antipodeBreakingCuts();
+        this.configuration.markComponents(cuts);
+        
+        let [lightCube, root] = this.findLightCube(limit, cuts);
         while (!this.configuration.isXYZMonotone() && lightCube !== null) {
             // if there is a lightCube, there is also a corresponding root
             root = root!;
             printMiniStep(`Gathering light Cube (${lightCube.p[0]}, ${lightCube.p[1]}, ${lightCube.p[2]})`)
 
-            const leaf = this.findLeafInDescendants(lightCube, root);
+            const leaf = this.findLeafInDescendants(lightCube, root, cuts);
             if (leaf === null) {
                 break;
             }
@@ -31,29 +34,80 @@ class GatherAlgorithm extends Algorithm {
             
             yield* this.walkBoundaryUntil(leaf, lightCube, root, target);
             
-            this.configuration.markComponents();
-            [lightCube, root] = this.findLightCube(limit);
+            cuts = this.antipodeBreakingCuts();
+            this.configuration.markComponents(cuts);
+            [lightCube, root] = this.findLightCube(limit, cuts);
         }
     }
 
     /**
      * Breaks antipodes by letting one of its neighbors move down.
      */
-    *breakAntipodes(): MoveGenerator {
+    antipodeBreakingCuts(): [number, number][] {
+        let cuts: [number, number][] = []
         for (let cube of this.configuration.cubes) {
+            this.configuration.markComponents(cuts);
             if (this.isAntipode(cube)) {
-                // move one of the neighbors down a spot
-                let cubeToMovePosition: Position = [...cube.p];
-                cubeToMovePosition[0]--;
-                yield new Move(this.configuration, cubeToMovePosition, 'z');
+                let has = this.configuration.getNeighborMap(cube.p);
+                if (has["z"]?.chunkId === has["x"]?.chunkId ||
+                    has["z"]?.chunkId === has["y"]?.chunkId) {
+                    // cut horizontally through the z nbr
+                    cuts.push([this.configuration.getCubeId(cube.p)!, this.configuration.getCubeId(has["z"]!.p)!]);
+                    // check if the z nbr now is in a different chunk
+                    this.configuration.markComponents(cuts);
+                    if (cube.chunkId !== -1 && cube.chunkId === has["z"]?.chunkId) {
+                        // cut this cube again
+                        let cubeAtz = has["z"]!;
+                        let hasZ = this.configuration.getNeighborMap(cubeAtz.p);
+                        
+                        let possibleNbrDirs = ["X", "Y", "z"];
+                        let skippedTheFirst = false;
+                        for (let dir of possibleNbrDirs) {
+                            // find the first nbr that is in the same chunk and cut that one
+                            if (hasZ[dir] && hasZ[dir]?.chunkId === cubeAtz.chunkId) {
+                                if (!skippedTheFirst) {
+                                    skippedTheFirst = true;
+                                    continue;
+                                }
+                                cuts.push([this.configuration.getCubeId(cubeAtz.p)!, this.configuration.getCubeId(hasZ[dir]!.p)!]);
+                            }
+                        }
+                    }
+                    
+                } else if (has["x"]?.chunkId === has["y"]?.chunkId) {
+                    // cut vertically through the x nbr
+                    cuts.push([this.configuration.getCubeId(cube.p)!, this.configuration.getCubeId(has["x"]!.p)!]);
+                    // check if the x nbr now is in a different chunk
+                    this.configuration.markComponents(cuts);
+                    if (cube.chunkId !== -1 && cube.chunkId === has["x"]?.chunkId) {
+                        // cut this cube again
+                        let cubeAtx = has["x"]!;
+                        let hasX = this.configuration.getNeighborMap(cubeAtx.p);
+
+                        let possibleNbrDirs = ["x", "Y", "Z"];
+                        let skippedTheFirst = false;
+                        for (let dir of possibleNbrDirs) {
+                            // find the first nbr that is in the same chunk and cut that one
+                            if (hasX[dir] && hasX[dir]?.chunkId === cubeAtx.chunkId) {
+                                if (!skippedTheFirst) {
+                                    skippedTheFirst = true;
+                                    continue;
+                                }
+                                cuts.push([this.configuration.getCubeId(cubeAtx.p)!, this.configuration.getCubeId(hasX[dir]!.p)!]);
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         }
+        return cuts;
     }
 
     /**
      * Test if a cube is an antipode with at least two of its neighbors in the same chunk
      */
-    isAntipode(cube: Cube): boolean {
+    isAntipode(cube: Cube): boolean { 
         let has = this.configuration.hasNeighbors(cube.p);
         let nbrs = this.configuration.getNeighborMap(cube.p);
         let chunkId = cube.chunkId;
@@ -61,7 +115,11 @@ class GatherAlgorithm extends Algorithm {
             !has['X'] && !has['Y'] && !has['Z'] &&
             !has['xy'] && !has['xz'] && !has['yz'] &&
             chunkId !== -1 &&
-            nbrs['x']?.chunkId === chunkId && nbrs['y']?.chunkId === chunkId;
+            (   
+                (nbrs['x']?.chunkId === chunkId && nbrs['y']?.chunkId === chunkId) ||
+                (nbrs['x']?.chunkId === chunkId && nbrs['z']?.chunkId === chunkId) ||
+                (nbrs['y']?.chunkId === chunkId && nbrs['z']?.chunkId === chunkId)
+            );
     }
 
     /**
@@ -69,7 +127,7 @@ class GatherAlgorithm extends Algorithm {
      * or null if there are no light Cubes in the configuration.
      * This assumes that the component status of the cubes has been set properly.
      */
-    findLightCube(limit: number): [Cube | null, Cube | null] {
+    findLightCube(limit: number, cuts: [number, number][]): [Cube | null, Cube | null] {
         let heaviestLightCube = null;
         let heaviestLightCubeCapacity = 0;
         let heaviestLightCubeRoot = null;
@@ -86,7 +144,7 @@ class GatherAlgorithm extends Algorithm {
                     if (neighborDirection.length === 1 && neighbors[neighborDirection]) {
                         // only check direct neighbors that exist, not edge adjacent neighbors
                         let root = neighbors[neighborDirection]!;
-                        const capacity = this.configuration.capacity(cube, root);
+                        const capacity = this.configuration.capacity(cube, root, cuts);
                         if (capacity < lightestBranchCapacity) {
                             lightestBranchCapacity = capacity;
                             lightestBranchRoot = root;
@@ -196,17 +254,17 @@ class GatherAlgorithm extends Algorithm {
      * Given a light Cube s and a root r, return a Cube from the descendants of s, not
      * edge-adjacent to s itself, that can be safely removed to chunkify s.
      */
-    findLeafInDescendants(s: Cube, r: Cube): Cube | null {
+    findLeafInDescendants(s: Cube, r: Cube, cuts: [number, number][]): Cube | null {
         // do a bfs from the root to see which Cubes are on the other side of s
         // do a BFS from the root, counting the Cubes, but disregard s
         
-        const capacityCubes = this.configuration.capacityCubes(s, r);
+        const capacityCubes = this.configuration.capacityCubes(s, r, cuts);
         for (let i = 0; i < capacityCubes.length; i++) {
             // only check Cubes that contribute to the capacity of s
             if (!capacityCubes[i]) continue;
             
             // if the configuration is still connected without this Cube, we can safely remove it
-            if (this.configuration.isConnected([], this.configuration.cubes[i].p)) {
+            if (this.configuration.isConnected(cuts, this.configuration.cubes[i].p)) {
                 return this.configuration.cubes[i];
             }
         }
@@ -233,12 +291,18 @@ class GatherAlgorithm extends Algorithm {
         // create a new configuration containing only light square lightCube and its descendants.
         let lightSquareDescendants = new Configuration();
         let capacityCubes = this.configuration.capacityCubes(lightCube, root);
+        if (capacityCubes.every(cube => cube === false)) {
+            // if no cube is part of the capacity, this means the light cube is not a cut square
+            // in the complete configuration. Therefore it must have been a cut cube in when considering
+            // the antipode cuts. In this case we can just use all cubes to go to the target position
+            capacityCubes = Array(capacityCubes.length).fill(true);
+        }
+        capacityCubes[this.configuration.getCubeId(lightCube.p)!] = true;
         for (let i = 0; i < capacityCubes.length; i++) {
             if (capacityCubes[i]) {
                 lightSquareDescendants.addCube(new Cube(null, this.configuration.cubes[i].p));
             }
         }
-        lightSquareDescendants.addCube(new Cube(null, lightCube.p));
         
         // compute path in descendants of lightCube.
         // set the configuration to be the original configuration instead of the "dummy" configuration.
