@@ -128,6 +128,10 @@ class GatherAlgorithm extends Algorithm {
      * This assumes that the component status of the cubes has been set properly.
      */
     findLightCube(limit: number, cuts: [number, number][]): [Cube | null, Cube | null] {
+        if (this.configuration.cubes.every((cube) => cube.chunkId === this.configuration.cubes[0].chunkId)) {
+            return [null, null];
+        }
+        
         let heaviestLightCube = null;
         let heaviestLightCubeCapacity = 0;
         let heaviestLightCubeRoot = null;
