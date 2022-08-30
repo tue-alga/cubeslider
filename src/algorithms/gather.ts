@@ -16,8 +16,8 @@ class GatherAlgorithm extends Algorithm {
         
         printStep('Gathering');
         const limit = 2 * this.configuration.boundingBoxSpan();
-        
         let cuts = this.antipodeBreakingCuts();
+        let antipodesExist = cuts.length !== 0;
         this.configuration.markComponents(cuts);
         
         let [lightCube, root] = this.findLightCube(limit, cuts);
@@ -34,7 +34,10 @@ class GatherAlgorithm extends Algorithm {
             
             yield* this.walkBoundaryUntil(leaf, lightCube, root, target);
             
-            cuts = this.antipodeBreakingCuts();
+            if (antipodesExist) {
+                cuts = this.antipodeBreakingCuts();
+                antipodesExist = cuts.length !== 0;
+            }
             this.configuration.markComponents(cuts);
             [lightCube, root] = this.findLightCube(limit, cuts);
         }
@@ -128,7 +131,10 @@ class GatherAlgorithm extends Algorithm {
      * This assumes that the component status of the cubes has been set properly.
      */
     findLightCube(limit: number, cuts: [number, number][]): [Cube | null, Cube | null] {
-        if (this.configuration.cubes.every((cube) => cube.chunkId === this.configuration.cubes[0].chunkId)) {
+        // if everything is already in a chunk (and there are no antipodes) then we should go compacting
+        if (this.configuration.cubes.every((cube) => cube.chunkId === this.configuration.cubes[0].chunkId) &&
+            this.configuration.cubes[0].chunkId !== -1 &&
+            cuts.length === 0) {
             return [null, null];
         }
         
