@@ -97,7 +97,7 @@ class CompactAlgorithm extends Algorithm {
         let bounds = this.configuration.bounds();
         let cubesOrdered: Cube[] = [...this.configuration.cubes].sort((c1,c2) => this.cost(c2.p, bounds) - this.cost(c1.p, bounds));
 
-        let possibleCornerMoves = ['xy', 'yz', 'xz', 'Xz', 'Yz', 'xY'];
+        let possibleCornerMoves = ['xy', 'yz', 'xz', 'Xz', 'Yz', 'Xy'];
         for (let cube of cubesOrdered) {
             if (cube.componentStatus !== ComponentStatus.CHUNK_STABLE) continue;
             const neighbors = this.configuration.getNeighborMap(cube.p);
