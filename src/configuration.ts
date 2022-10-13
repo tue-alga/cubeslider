@@ -462,17 +462,18 @@ class Configuration {
      * fields
      * @param cuts a list of pairs of neighboring cubes that are not supposed to be considered neighbors 
      */
-    markComponents(cuts: [number, number][] = []): void {        
-        const [components, chunkIds, stable] = this.findComponents(cuts);
+    markComponents(cuts: [number, number][] = []): void {
+        const [components, chunkIds, chunkSizesPerCube, stable] = this.findComponents(cuts);
         for (let i = 0; i < this.cubes.length; i++) {
+            let heavyChunk = chunkSizesPerCube[i] >= 2 * this.boundingBoxSpan();
             if (components[i] === 2) {
-                this.cubes[i].setComponentStatus(stable[i] ? ComponentStatus.CHUNK_STABLE : ComponentStatus.CHUNK_CUT);
+                this.cubes[i].setComponentStatus(stable[i] ? ComponentStatus.CHUNK_STABLE : ComponentStatus.CHUNK_CUT, heavyChunk);
             } else if (components[i] === 1) {
-                this.cubes[i].setComponentStatus(stable[i] ? ComponentStatus.LINK_STABLE : ComponentStatus.LINK_CUT);
+                this.cubes[i].setComponentStatus(stable[i] ? ComponentStatus.LINK_STABLE : ComponentStatus.LINK_CUT, heavyChunk);
             } else if (components[i] === 3) {
-                this.cubes[i].setComponentStatus(ComponentStatus.CONNECTOR);
+                this.cubes[i].setComponentStatus(ComponentStatus.CONNECTOR, heavyChunk);
             } else {
-                this.cubes[i].setComponentStatus(ComponentStatus.NONE);
+                this.cubes[i].setComponentStatus(ComponentStatus.NONE, heavyChunk);
             }
             this.cubes[i].setChunkId(chunkIds[i]);
         }
@@ -489,19 +490,22 @@ class Configuration {
      * the Cube is in. If the Cube is a connector and in more than one chunk,
      * the chunk ID of the chunk closer to the root is returned. Cubes that
      * are not in a chunk get chunk ID -1.
-     * The third array returns for every cube if it is stable or not (cut)
+     * The third array returns for every cube the size of the chunk it is in, or -1 if not in a chunk
+     * The fourth array returns for every cube if it is stable or not (cut)
      *
      * If the configuration is disconnected, this returns -1 for both component
      * status and chunk IDs.
      */
-    findComponents(cuts: [number, number][]): [number[], number[], boolean[]] {
+    findComponents(cuts: [number, number][]): [number[], number[], number[], boolean[]] {
         let components = Array(this.cubes.length).fill(-1);
         let chunkIds = Array(this.cubes.length).fill(-1);
+        let chunkSizesPerCube: number[] = Array(this.cubes.length).fill(-1);
         const stable = this.findCubeStability(cuts);
+
 
         // don't try to find components if the configuration is disconnected
         if (!this.cubes.length || !this.isConnected(cuts)) {
-            return [components, chunkIds, stable];
+            return [components, chunkIds, chunkSizesPerCube, stable];
         }
 
         let edgeChunks = Array();
@@ -580,7 +584,29 @@ class Configuration {
             }
         }
         
-        return [components, chunkIds, stable];
+        let maxChunkId = chunkIds.max();
+        if (maxChunkId === -1) {
+            maxChunkId = 0;
+        }
+        let chunkSizes: number[] = Array(maxChunkId + 1).fill(0);
+        for (let chunkId = 0; chunkId <= maxChunkId; chunkId++) {
+            let count = 0;
+            for (let cube = 0; cube < chunkIds.length; cube++) {
+                if (chunkIds[cube] === chunkId) {
+                    count++;
+                }
+            }
+            chunkSizes[chunkId] = count;
+        }
+        
+        for (let cube = 0; cube < chunkSizesPerCube.length; cube++) {
+            let chunkId = chunkIds[cube];
+            if (chunkId !== -1) {
+                chunkSizesPerCube[cube] = chunkSizes[chunkIds[cube]];
+            }
+        }
+        
+        return [components, chunkIds, chunkSizesPerCube, stable];
     }
 
     private findComponentsRecursive(u: number, discovery: number[],

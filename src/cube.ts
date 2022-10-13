@@ -16,11 +16,12 @@ class Color {
 	static readonly ORANGE = new Color(248, 160, 80);
 	static readonly GREEN = new Color(140, 218, 90);
 
-	static readonly CONNECTOR_COLOR = new PIXI3D.Color(0.45, 0.65, 0.925);
-	static readonly CHUNK_STABLE_COLOR = new PIXI3D.Color(0.3, 0.5, 0.9);
-	static readonly CHUNK_CUT_COLOR = new PIXI3D.Color(0.6, 0.8, 0.95);
-	static readonly LINK_STABLE_COLOR = new PIXI3D.Color(0.9, 0.5, 0.3);
-	static readonly LINK_CUT_COLOR = new PIXI3D.Color(0.95, 0.8, 0.6);
+	static readonly CONNECTOR_COLOR = new PIXI3D.Color(0.45, 0.65, 0.925); // #73A6EC
+	static readonly CHUNK_STABLE_COLOR = new PIXI3D.Color(0.3, 0.5, 0.9); // #4D80E6
+	static readonly CHUNK_CUT_COLOR = new PIXI3D.Color(0.6, 0.8, 0.95); // #99CCF2
+	static readonly LINK_STABLE_COLOR = new PIXI3D.Color(0.9, 0.5, 0.3); //#E6804D
+	static readonly LINK_CUT_COLOR = new PIXI3D.Color(0.95, 0.8, 0.6); // #F2CC99
+	static readonly HEAVY_COLOR = new PIXI3D.Color(0.42,0.93,0.45); //#6AEC73
 	
 	static readonly BASE_COLOR = new PIXI3D.Color(1, 1, 1);
 	
@@ -47,6 +48,7 @@ class Cube {
 	resetPosition: Position;
 	color: Color;
 	componentStatus: ComponentStatus;
+	heavyChunk: boolean;
 	chunkId: number;
 	pixi = new PIXI3D.Container3D();
 	mesh: PIXI3D.Mesh3D;
@@ -62,6 +64,7 @@ class Cube {
 		this.resetPosition = [p[0], p[1], p[2]];
 		this.color = (color === undefined) ? new Color(Color.BASE_COLOR.r, Color.BASE_COLOR.g, Color.BASE_COLOR.b) : color;
 		this.componentStatus = ComponentStatus.NONE;
+		this.heavyChunk = false;
 		this.chunkId = -1;
 
 		// @ts-ignore
@@ -138,7 +141,11 @@ class Cube {
 		}
 		let material = this.mesh.material! as PIXI3D.StandardMaterial;
 		if (!this.world.showComponentMarks) {
-			material.baseColor = new PIXI3D.Color(1, 1, 1);
+			if (this.heavyChunk) {
+				material.baseColor = Color.HEAVY_COLOR;
+			} else {
+				material.baseColor = new PIXI3D.Color(1, 1, 1);
+			}
 		} else {
 			switch (this.componentStatus) {
 				case ComponentStatus.CONNECTOR:
@@ -181,8 +188,9 @@ class Cube {
 		this.updatePixi();
 	}
 
-	setComponentStatus(componentStatus: ComponentStatus): void {
+	setComponentStatus(componentStatus: ComponentStatus, heavyChunk: boolean = false): void {
 		this.componentStatus = componentStatus;
+		this.heavyChunk = heavyChunk;
 		if (this.world !== null) {
 			this.updatePixi();
 		}

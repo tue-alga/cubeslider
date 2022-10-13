@@ -482,6 +482,7 @@ class CompactAlgorithm extends Algorithm {
      */
     preservesChunkiness(moves: Move[]): boolean {
         let originalComponentStatus: ComponentStatus[] = this.configuration.cubes.map(cube => {return cube.componentStatus;});
+        let originalHeavyChunk: boolean[] = this.configuration.cubes.map(cube => {return cube.heavyChunk;});
         let originalChunkIds: number[] = this.configuration.cubes.map(cube => {return cube.chunkId;});
         
         let preservesChunkiness = true;
@@ -525,7 +526,7 @@ class CompactAlgorithm extends Algorithm {
             this.configuration.moveCubeUnmarked(cube, moveToUndo.sourcePosition());
         }
         for (let i = 0; i < this.configuration.cubes.length; i++) {
-            this.configuration.cubes[i].setComponentStatus(originalComponentStatus[i]);
+            this.configuration.cubes[i].setComponentStatus(originalComponentStatus[i], originalHeavyChunk[i]);
             this.configuration.cubes[i].setChunkId(originalChunkIds[i]);
         }
         
@@ -551,9 +552,9 @@ class CompactAlgorithm extends Algorithm {
             checked[i] = true;
             // check every item from i onwards            
             for (let j = i; j < originalChunks.length; j++) {
-                if (originalChunks[j] === originalChunks[i]) {
+                if (originalChunks[j] === originalChunks[i] && originalChunks[i] !== -1) {
                     checked[j] = true;
-                    if (newChunks[j] !== originalChunks[i]) {
+                    if (newChunks[j] !== newChunks[i]) {
                         return false;
                     }
                 }
