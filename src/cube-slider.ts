@@ -386,6 +386,9 @@ class CubeSlider {
 
 		if (this.world.simulationMode === SimulationMode.RUNNING) {
 			this.world.showMoves = []; // reset the moveable cubes
+			this.world.freeMoves =[];
+			this.world.cornerMoves = [];
+			this.world.chainMoves = [];
 			this.showMovesButton.setPressed(false);
 			this.time += this.timeSpeed * delta;
 
@@ -725,31 +728,35 @@ class CubeSlider {
 	}
 	
 	showMoves(): void {
-		this.showMovesButton.setPressed(!this.showMovesButton.isPressed());
 		if (this.world.showMoves.length > 0) {
 			this.world.showMoves = [];
+			this.world.freeMoves = [];
+			this.world.cornerMoves = [];
+			this.world.chainMoves = [];
 		} else {
 			let algo = new CompactAlgorithm(this.world);
-			let moves: (Move | [Move, Move] | Move[])[] = [...algo.findFreeMove(false), ...algo.findCornerMove(false), ...algo.findChainMove(false)];
-			for (let move of moves) {
-				let cubeToMove;
-				if (Array.isArray(move)) {
-					if (move.length === 2) {
-						cubeToMove = this.world.configuration.getCube(move[1].sourcePosition());	
-					} else if (move.length > 2) {
-						cubeToMove = this.world.configuration.getCube(move[0].sourcePosition());
-					} else {
-						cubeToMove = null
-					}
-				} else {
-					cubeToMove = this.world.configuration.getCube(move.sourcePosition());
-				}
-				this.world.showMoves.push(cubeToMove!);
+			let freeMoves = algo.findFreeMove(false);
+			let cornerMoves = algo.findCornerMove(false);
+			let chainMoves = algo.findChainMove(false);
+			this.world.freeMoves = [];
+			this.world.cornerMoves = [];
+			this.world.chainMoves = [];
+			for (let move of freeMoves) {
+				this.world.freeMoves.push(this.world.configuration.getCube(move.sourcePosition())!);
 			}
+			for (let move of cornerMoves) {
+				this.world.cornerMoves.push(this.world.configuration.getCube(move[1].sourcePosition())!);
+			}
+			for (let move of chainMoves) {
+				this.world.chainMoves.push(this.world.configuration.getCube(move[0].sourcePosition())!);
+			}
+			
+			this.world.showMoves = [...this.world.freeMoves, ...this.world.cornerMoves, ...this.world.chainMoves];
 		}
 		for (let cube of this.world.configuration.cubes) {
 			cube.updatePixi();
 		}
+		this.showMovesButton.setPressed(this.world.showMoves.length > 0);
 	}
 
 	help(): void {

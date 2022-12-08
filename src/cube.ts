@@ -142,7 +142,22 @@ class Cube {
 		}
 		let material = this.mesh.material! as PIXI3D.StandardMaterial;
 		if (this.world.showMoves.indexOf(this) > -1) {
-			material.baseColor = Color.MOVEALBE_COLOR;
+			let r, g, b;
+			if (this.world.freeMoves.indexOf(this) > -1) {
+				r = 1;
+			}
+			if (this.world.cornerMoves.indexOf(this) > -1) {
+				g = 1;
+			}
+			if (this.world.chainMoves.indexOf(this) > -1) {
+				b = 1;
+			}
+			if (r === 1 && g === 1 && b === 1) {
+				r = 0;
+				g = 0;
+				b = 0;
+			}
+			material.baseColor = new PIXI3D.Color(r, g, b);
 		} else if (!this.world.showComponentMarks) {
 			if (this.heavyChunk) {
 				material.baseColor = Color.HEAVY_COLOR;

@@ -17,6 +17,9 @@ class World {
 	pixi = new PIXI3D.Container3D();
 	showComponentMarks = false;
 	showMoves: Cube[] = [];
+	freeMoves: Cube[] = [];
+	cornerMoves: Cube[] = [];
+	chainMoves: Cube[] = [];
 
 	ground: PIXI3D.Mesh3D[][] = [];
 	axes: PIXI3D.Mesh3D[] = [];
