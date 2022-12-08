@@ -21,6 +21,7 @@ import { GatherAlgorithm } from './algorithms/gather';
 import {Move} from "./move";
 import {CompactAlgorithm} from "./algorithms/compact";
 import {GatherAndCompactAlgorithm} from "./algorithms/gather-and-compact";
+import type = Mocha.utils.type;
 
 /*import { GatherAndCompactAlgorithm } from './algorithms/gather-and-compact';
 import { CompactAlgorithm } from './algorithms/compact';
@@ -84,6 +85,9 @@ class CubeSlider {
 	private readonly algorithmButton: TextButton;
 	private readonly showConnectivityButton: IconButton;
 	private readonly showAxesButton: IconButton;
+	
+	private readonly showMovesButton: IconButton;
+	
 	private readonly helpButton: IconButton;
 	private readonly cursorPositionLabel: CoordinateLabel;
 
@@ -145,6 +149,11 @@ class CubeSlider {
 		this.showAxesButton.onClick(this.showAxes.bind(this));
 		this.showAxesButton.setPressed(true);
 		this.topBar.addChild(this.showAxesButton);
+		
+		this.showMovesButton = new IconButton("color", "Show all compactable cubes", false);
+		this.showMovesButton.onClick(this.showMoves.bind(this));
+		this.showMovesButton.setPressed(false);
+		this.topBar.addChild(this.showMovesButton);
 
 		this.topBar.addChild(new Separator());
 
@@ -376,6 +385,8 @@ class CubeSlider {
 		this.uiTime += delta;
 
 		if (this.world.simulationMode === SimulationMode.RUNNING) {
+			this.world.showMoves = []; // reset the moveable cubes
+			this.showMovesButton.setPressed(false);
 			this.time += this.timeSpeed * delta;
 
 			if (this.time > this.runUntil) {
@@ -711,6 +722,28 @@ class CubeSlider {
 	showAxes(): void {
 		this.showAxesButton.setPressed(!this.showAxesButton.isPressed());
 		this.world.showAxes(this.showAxesButton.isPressed());
+	}
+	
+	showMoves(): void {
+		this.showMovesButton.setPressed(!this.showMovesButton.isPressed());
+		if (this.world.showMoves.length > 0) {
+			this.world.showMoves = [];
+		} else {
+			let algo = new CompactAlgorithm(this.world);
+			let moves: (Move | [Move, Move] | Move[])[] = [...algo.findFreeMove(false), ...algo.findCornerMove(false), ...algo.findChainMove(false)];
+			for (let move of moves) {
+				let cubeToMove;
+				if (Array.isArray(move)) {
+					cubeToMove = this.world.configuration.getCube(move[0].sourcePosition());
+				} else {
+					cubeToMove = this.world.configuration.getCube(move.sourcePosition());
+				}
+				this.world.showMoves.push(cubeToMove!);
+			}
+		}
+		for (let cube of this.world.configuration.cubes) {
+			cube.updatePixi();
+		}
 	}
 
 	help(): void {

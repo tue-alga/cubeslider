@@ -22,6 +22,7 @@ class Color {
 	static readonly LINK_STABLE_COLOR = new PIXI3D.Color(0.9, 0.5, 0.3); //#E6804D
 	static readonly LINK_CUT_COLOR = new PIXI3D.Color(0.95, 0.8, 0.6); // #F2CC99
 	static readonly HEAVY_COLOR = new PIXI3D.Color(0.42,0.93,0.45); //#6AEC73
+	static readonly MOVEALBE_COLOR = new PIXI3D.Color(1, 1, 0); // #ffff00
 	
 	static readonly BASE_COLOR = new PIXI3D.Color(1, 1, 1);
 	
@@ -140,7 +141,9 @@ class Cube {
 			throw Error("You tried calling updatePixi on a cube that does not have a world attached.");
 		}
 		let material = this.mesh.material! as PIXI3D.StandardMaterial;
-		if (!this.world.showComponentMarks) {
+		if (this.world.showMoves.indexOf(this) > -1) {
+			material.baseColor = Color.MOVEALBE_COLOR;
+		} else if (!this.world.showComponentMarks) {
 			if (this.heavyChunk) {
 				material.baseColor = Color.HEAVY_COLOR;
 			} else {

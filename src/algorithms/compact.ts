@@ -8,15 +8,15 @@ class CompactAlgorithm extends Algorithm {
         printStep("Compacting");
         
         while (!this.configuration.isXYZMonotone()) {
-            let freeMove = this.findFreeMove();
-            let cornerMove = this.findCornerMove();
+            let freeMove = this.findFreeMove(true);
+            let cornerMove = this.findCornerMove(true);
 
             let moves: Move[][] = [];
-            if (freeMove !== null) {
-                moves.push([freeMove]);
+            if (freeMove.length > 0) {
+                moves.push([freeMove[0]]);
             }
-            if (cornerMove !== null) {
-                moves.push(cornerMove);
+            if (cornerMove.length > 0) {
+                moves.push(cornerMove[0]);
             }
 
             let maxCost = -1;
@@ -29,9 +29,9 @@ class CompactAlgorithm extends Algorithm {
                 }
             }
             
-            let chainMove = this.findChainMove(maxCost);
-            if (chainMove) {
-                yield* chainMove;
+            let chainMove = this.findChainMove(true, maxCost);
+            if (chainMove.length > 0) {
+                yield* chainMove[0];
             } else if (maxMove !== null) {
                 yield* maxMove;
             } else {
@@ -63,10 +63,12 @@ class CompactAlgorithm extends Algorithm {
      * From all possible free moves (reducing the total cost), this finds the move that moves the cube
      * with the highest cost
      */
-    findFreeMove(): Move | null {
+    findFreeMove(stopAfterFirst: boolean): Move[] | [] {
         // reverse order the cubes on cost and pick the first one that has a valid free move.
         let bounds = this.configuration.bounds();
         let cubesOrdered: Cube[] = [...this.configuration.cubes].sort((c1,c2) => this.cost(c2.p, bounds) - this.cost(c1.p, bounds));
+        
+        let potentialMoves: Move[] = [];
         
         for (let cube of cubesOrdered) {
             if (cube.componentStatus !== ComponentStatus.CHUNK_STABLE) continue;
@@ -78,12 +80,15 @@ class CompactAlgorithm extends Algorithm {
                     this.cost(cube.p, bounds) > this.cost(target, bounds) &&
                     this.inBounds(target) &&
                     this.preservesChunkiness([potentialMove])) {
-                    return potentialMove;
+                    potentialMoves.push(potentialMove);
+                    if (stopAfterFirst) {
+                        return potentialMoves;
+                    }
                 }
             }
         }
         
-        return null;
+        return potentialMoves;
     }
 
     /**
@@ -92,11 +97,13 @@ class CompactAlgorithm extends Algorithm {
      * Possible corner moves that reduce cost:
      * xy, yz, xz, Xz, Yz, xY
      */
-    findCornerMove(): [Move, Move] | null {
+    findCornerMove(stopAfterFirst: boolean): [Move, Move][] | [] {
         // reverse order the cubes on cost and pick the first with a valid corner move
         let bounds = this.configuration.bounds();
         let cubesOrdered: Cube[] = [...this.configuration.cubes].sort((c1,c2) => this.cost(c2.p, bounds) - this.cost(c1.p, bounds));
 
+        let potentialMoves: [Move, Move][] = [];
+        
         let possibleCornerMoves = ['xy', 'yz', 'xz', 'Xz', 'Yz', 'Xy'];
         for (let cube of cubesOrdered) {
             if (cube.componentStatus !== ComponentStatus.CHUNK_STABLE) continue;
@@ -125,7 +132,10 @@ class CompactAlgorithm extends Algorithm {
                         let secondMove = new Move(this.configuration, cube.p, secondMoveDir);
                         
                         if (this.preservesChunkiness([firstMove, secondMove])) {
-                            return [firstMove, secondMove];
+                            potentialMoves.push([firstMove, secondMove]);
+                            if (stopAfterFirst) {
+                                return potentialMoves;
+                            }
                         }
                     }
                 }
@@ -133,7 +143,7 @@ class CompactAlgorithm extends Algorithm {
         }
         
         // no move has been returned yet, so no valid corner move exists
-        return null;
+        return potentialMoves;
     }
 
     /**
@@ -142,36 +152,51 @@ class CompactAlgorithm extends Algorithm {
      * @param limit finding chainmoves is a heavy operation. If a valid move with cost limit has already been found,
      * only search for chainmoves that are better to avoid searching all chain moves.
      */
-    findChainMove(limit?: number): Move[] | null {
+    findChainMove(stopAfterFirst: boolean, limit?: number): Move[][] | [] {
         const [minX, minY, minZ, ,] = this.configuration.bounds();
         // reverse order the cubes on cost and pick the first with a valid corner move
         let bounds = this.configuration.bounds();
         let cubesOrdered: Cube[] = [...this.configuration.cubes].sort((c1,c2) => this.cost(c2.p, bounds) - this.cost(c1.p, bounds));
+        
+        let potentialMoves: Move[][] = [];
         
         for (let cube of cubesOrdered) {
             if (limit && this.cost(cube.p, bounds) <= limit) break;
             if (cube.componentStatus === ComponentStatus.CHUNK_STABLE) {
                 if (cube.p[0] === minX) {
                     let move = this.checkZChainMove(cube);
-                    if (move !== null) return move;
+                    if (move !== null) {
+                        potentialMoves.push(move);
+                        if (stopAfterFirst) return potentialMoves;
+                    }
                     move = this.checkYChainMove(cube);
-                    if (move !== null) return move;
-                }
+                    if (move !== null) {
+                        potentialMoves.push(move);
+                        if (stopAfterFirst) return potentialMoves;
+                    }                }
                 if (cube.p[1] === minY) {
                     let move = this.checkZChainMove(cube);
-                    if (move !== null) return move;
-                    move = this.checkXChainMove(cube);
-                    if (move !== null) return move;
-                }
+                    if (move !== null) {
+                        potentialMoves.push(move);
+                        if (stopAfterFirst) return potentialMoves;
+                    }                    move = this.checkXChainMove(cube);
+                    if (move !== null) {
+                        potentialMoves.push(move);
+                        if (stopAfterFirst) return potentialMoves;
+                    }                }
                 if (cube.p[2] === minZ) {
                     let move = this.checkYChainMove(cube);
-                    if (move !== null) return move;
-                    move = this.checkXChainMove(cube);
-                    if (move !== null) return move;
-                }
+                    if (move !== null) {
+                        potentialMoves.push(move);
+                        if (stopAfterFirst) return potentialMoves;
+                    }                    move = this.checkXChainMove(cube);
+                    if (move !== null) {
+                        potentialMoves.push(move);
+                        if (stopAfterFirst) return potentialMoves;
+                    }                }
             }
         }
-        return null;
+        return potentialMoves;
     }
     
     checkXChainMove(cube: Cube): Move[] | null {
