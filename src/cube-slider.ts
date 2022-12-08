@@ -734,7 +734,13 @@ class CubeSlider {
 			for (let move of moves) {
 				let cubeToMove;
 				if (Array.isArray(move)) {
-					cubeToMove = this.world.configuration.getCube(move[0].sourcePosition());
+					if (move.length === 2) {
+						cubeToMove = this.world.configuration.getCube(move[1].sourcePosition());	
+					} else if (move.length > 2) {
+						cubeToMove = this.world.configuration.getCube(move[0].sourcePosition());
+					} else {
+						cubeToMove = null
+					}
 				} else {
 					cubeToMove = this.world.configuration.getCube(move.sourcePosition());
 				}
