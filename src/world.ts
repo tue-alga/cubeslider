@@ -12,7 +12,6 @@ import {StandardMaterial} from "pixi3d";
  * Collection of Cubes on the grid.
  */
 class World {
-	
 	configuration: Configuration = new Configuration();
 	pixi = new PIXI3D.Container3D();
 	showComponentMarks = false;

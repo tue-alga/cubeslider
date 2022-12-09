@@ -2,10 +2,163 @@ import * as PIXI from 'pixi.js';
 import * as PIXI3D from 'pixi3d';
 
 import {SimulationMode, World} from './world';
-import {InteractionEvent} from "pixi.js";
+import {InteractionEvent, Program} from "pixi.js";
 import { Move } from './move';
+import {Camera, Material, Mesh3D, MeshShader, StandardMaterial, Vec3} from "pixi3d";
 
 type Position = [number, number, number];
+
+// A custom material that allows for setting specific move types.
+// When these booleans are set, stripes of color appear over the cubes.
+class CustomMaterial extends Material {
+	/** The base color of the material. */
+	baseColor: PIXI3D.Color = new PIXI3D.Color(1.0, 1.0, 1.0);
+	lightPos: Float32Array = Vec3.fromValues(100.0, 50.0, 0.0);
+	lmMove: boolean = false;
+	cornerMove: boolean = false;
+	chainMove: boolean = false;
+
+	updateUniforms(mesh: Mesh3D, shader:MeshShader) {
+		if (shader.uniforms.u_Time === undefined) {
+			shader.uniforms.u_Time = 0;
+		}
+		shader.uniforms.u_ViewProjection = Camera.main.viewProjection;
+		shader.uniforms.u_Model = mesh.worldTransform.array;
+		shader.uniforms.u_BaseColor = [this.baseColor.r, this.baseColor.g, this.baseColor.b];
+		shader.uniforms.u_PossibleMoves = [+this.lmMove, +this.cornerMove, +this.chainMove];
+		shader.uniforms.u_LightPos = [this.lightPos[0], this.lightPos[1], this.lightPos[2]];
+		shader.uniforms.u_ViewPos = [Camera.main.x, Camera.main.y, Camera.main.z];
+	}
+
+	// The vertex shader is responsible for converting each vertex position into
+	// normalized device coordinates (from -1 to 1). The defined attributes
+	// (a_Position and a_Normal) are automatically linked to the mesh geometry
+	// when using `MeshShader`. Varying variables are passed to the fragment shader.
+	// Uniforms are used to pass values from JavaScript to the shader.
+	// Both vertex -and fragment shaders are written using GLSL (GL Shader Language).
+
+	vertexShader = `
+			attribute vec3 a_Position;
+			attribute vec2 a_UV1;
+			attribute vec3 a_Normal;
+
+			varying vec3 v_Position;
+			varying vec2 v_UV1;
+			varying vec3 v_Normal;
+			varying vec3 v_FragPos;
+
+			uniform mat4 u_ViewProjection;
+			uniform mat4 u_Model;
+
+			void main() {
+			  v_Position = a_Position;
+			  v_UV1 = a_UV1;
+			  v_Normal = a_Normal;
+			  v_FragPos = vec3(u_Model * vec4(a_Position, 1.0));
+			  gl_Position = u_ViewProjection * u_Model * vec4(a_Position, 1.0);
+			}
+			`;
+	
+	fragmentShader = `
+			varying vec3 v_Position;
+			varying vec2 v_UV1;
+			varying vec3 v_Normal;
+			varying vec3 v_FragPos;
+
+			uniform vec3 u_BaseColor;
+			uniform vec3 u_PossibleMoves;
+			
+			uniform vec3 u_LightPos;
+			uniform vec3 u_ViewPos;
+			
+			const vec3 colorLM = vec3(1.0, 0.0, 0.0);
+			const vec3 colorCorner = vec3(0.0, 1.0, 0.0);
+			const vec3 colorChain = vec3(0.0, 0.0, 1.0);
+			
+			void main() {
+			  vec3 position = v_Position / 100.0;
+			  
+			  // Count the number of colors we need and which colors that are
+			  float numberOfColors = 0.0;
+			  vec3 color1;
+			  vec3 color2;
+			  vec3 color3;
+			  if (u_PossibleMoves.x == 1.0) {
+			  	numberOfColors = numberOfColors + 1.0;
+			  	color1 = colorLM;
+			  }
+			  if (u_PossibleMoves.y == 1.0) {
+			  	numberOfColors = numberOfColors + 1.0;
+			  	if (length(color1) == 0.0) {
+			  		color1 = colorCorner;
+			  	} else {
+			  		color2 = colorCorner;
+			  	}
+			  }
+			  if (u_PossibleMoves.z == 1.0) {
+			  	numberOfColors = numberOfColors + 1.0;
+				if (length(color1) == 0.0) {
+			  		color1 = colorChain;
+			  	} else if (length(color2) == 0.0) {
+			  		color2 = colorChain;
+			  	} else {
+			  		color3 = colorChain;
+			  	}
+			  }
+			  
+			  // We want twice as many stripes as we have colors for visibility, unless there is only 1 color
+			  float numberOfStripes = numberOfColors * 2.0;	  
+			  if (numberOfColors == 1.0) {
+			  	numberOfStripes = 1.0;
+			  }
+			  
+			  // Calculate the normalized positions for each coordinate
+			  float normalPosY = v_Position.y + 0.5;
+			  float normalPosX = v_Position.x + 0.5;
+			  float normalPosZ = v_Position.z + 0.5;
+			  // interpolate between all coordinates to get a diagonal gradient
+			  float normalPos = mix(normalPosX, normalPosY, 0.5);
+			  normalPos = mix(normalPos, normalPosZ, 0.5);
+			  // create gradient stripes
+			  float gradient = mod(normalPos * (numberOfStripes / numberOfColors), 1.0);
+			  // cap the gradient into integers
+			  float stripes = floor(gradient * numberOfColors);
+			  
+			  // depending on the current stripe, a different color will be picked
+			  vec3 color = vec3(0.0, 0.0, 0.0);
+			  if (stripes == 0.0) {
+			  	color = color1;
+			  } else if (stripes == 1.0) {
+			  	color = color2;
+			  } else if (stripes == 2.0) {
+			  	color = color3;
+			  }
+			  // if there are no available moves, pick the default color
+			  if (length(u_PossibleMoves) == 0.0) {
+			  	color = u_BaseColor;
+			  }
+			  
+			  vec3 normal = v_Normal + 0.5;
+			  
+			  // add diffuse lighting
+			  vec3 lightDir = normalize(u_LightPos - v_FragPos);
+			  float diffuseFactor = max(dot(normal, lightDir), 0.0);	  
+			  
+			  float lightFactor = diffuseFactor;
+			  // let lightFactor range between 0.2 and 0.8
+			  float startRange = 0.5;
+			  float endRange = 0.8;
+			  float range = endRange - startRange;
+			  lightFactor = lightFactor * range + startRange;
+			  
+			  gl_FragColor = vec4(color * lightFactor, 1.0);
+			}
+			`;
+
+	createShader() {
+		return new MeshShader(Program.from(this.vertexShader, this.fragmentShader));
+	}
+}
 
 class Color {
 	static readonly GRAY = new Color(230, 230, 230);
@@ -67,12 +220,11 @@ class Cube {
 		this.componentStatus = ComponentStatus.NONE;
 		this.heavyChunk = false;
 		this.chunkId = -1;
-
+		
 		// @ts-ignore
 		this.mesh = PIXI3D.Model.from(PIXI.Loader.shared.resources["cube.gltf"]['gltf']).meshes[0];
-
-
-		if (world !== null) {			
+		
+		if (world !== null) {
 			let material = new PIXI3D.StandardMaterial();
 			material.baseColor = Color.BASE_COLOR;
 			material.exposure = 1.5;
@@ -93,6 +245,8 @@ class Cube {
 				this.addShield([0, 0, 1], [0, 0, 0]);  // Z
 			}
 
+			this.mesh.material = new CustomMaterial();
+			
 			this.updatePixi();
 		}
 
@@ -140,25 +294,23 @@ class Cube {
 		if (this.world === null) {
 			throw Error("You tried calling updatePixi on a cube that does not have a world attached.");
 		}
-		let material = this.mesh.material! as PIXI3D.StandardMaterial;
+		let material = this.mesh.material! as CustomMaterial;
 		if (this.world.showMoves.indexOf(this) > -1) {
-			let r, g, b;
 			if (this.world.freeMoves.indexOf(this) > -1) {
-				r = 1;
+				material.lmMove = true;
 			}
 			if (this.world.cornerMoves.indexOf(this) > -1) {
-				g = 1;
+				material.cornerMove = true;
 			}
 			if (this.world.chainMoves.indexOf(this) > -1) {
-				b = 1;
+				material.chainMove = true;
 			}
-			if (r === 1 && g === 1 && b === 1) {
-				r = 0;
-				g = 0;
-				b = 0;
-			}
-			material.baseColor = new PIXI3D.Color(r, g, b);
-		} else if (!this.world.showComponentMarks) {
+		} else {
+			material.lmMove = false;
+			material.cornerMove = false;
+			material.chainMove = false;
+		}
+		if (!this.world.showComponentMarks) {
 			if (this.heavyChunk) {
 				material.baseColor = Color.HEAVY_COLOR;
 			} else {
