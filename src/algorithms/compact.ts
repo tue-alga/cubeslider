@@ -202,6 +202,7 @@ class CompactAlgorithm extends Algorithm {
     checkXChainMove(cube: Cube): Move[] | null {
         const minX = this.configuration.bounds()[0];
         let lastCube: Cube | null = null;
+        if (!this.configuration.hasCube([cube.p[0] - 1, cube.p[1], cube.p[2]])) return null;
         for (let x = cube.p[0] - 1; x >= minX; x--) {
             if (!this.configuration.hasCube([x - 1, cube.p[1], cube.p[2]]) && this.configuration.hasCube([x, cube.p[1], cube.p[2]])) {
                 lastCube = this.configuration.getCube([x, cube.p[1], cube.p[2]])!;
@@ -229,6 +230,7 @@ class CompactAlgorithm extends Algorithm {
     checkYChainMove(cube: Cube): Move[] | null {
         const minY = this.configuration.bounds()[1];
         let lastCube: Cube | null = null;
+        if (!this.configuration.hasCube([cube.p[0], cube.p[1] - 1, cube.p[2]])) return null;
         for (let y = cube.p[1] - 1; y >= minY; y--) {
             if (!this.configuration.hasCube([cube.p[0], y - 1, cube.p[2]]) && this.configuration.hasCube([cube.p[0], y, cube.p[2]])) {
                 lastCube = this.configuration.getCube([cube.p[0], y, cube.p[2]])!;
@@ -256,6 +258,7 @@ class CompactAlgorithm extends Algorithm {
     checkZChainMove(cube: Cube): Move[] | null {
         const minZ = this.configuration.bounds()[2];
         let lastCube: Cube | null = null;
+        if (!this.configuration.hasCube([cube.p[0], cube.p[1], cube.p[2] - 1])) return null;
         for (let z = cube.p[2] - 1; z >= minZ; z--) {
             if (!this.configuration.hasCube([cube.p[0], cube.p[1], z - 1]) && this.configuration.hasCube([cube.p[0], cube.p[1], z])) {
                 lastCube = this.configuration.getCube([cube.p[0], cube.p[1], z])!;
@@ -279,226 +282,6 @@ class CompactAlgorithm extends Algorithm {
         }
         return null;
     }
-    
-    // /**
-    //  * From all possible chain moves (reducing the total cost), this finds the move that moves the cube
-    //  * with the highest cost
-    //  */
-    // findChainMove(): Move[] | null {
-    //     let potentialMoves: Move[][] = [];
-    //     const [minX, minY, minZ, maxX, maxY, maxZ] = this.configuration.bounds();
-    //    
-    //     let potentialXReducingCubes: (Cube | null)[] = [];
-    //     // bottom plane
-    //     for (let y = maxY; y >= minY; y--) {
-    //         for (let x = maxX; x >= minX; x--) {
-    //             if (this.configuration.hasCube([x, y, minZ])) {
-    //                 const cube = this.configuration.getCube([x, y, minZ])!;
-    //                 if (cube.componentStatus === ComponentStatus.CHUNK_STABLE) {
-    //                     potentialXReducingCubes.push(cube);
-    //                 } else {
-    //                     potentialXReducingCubes.push(null);
-    //                 }
-    //                 break;
-    //             }
-    //         } 
-    //     }
-    //     // front-most plane
-    //     for (let z = maxZ; z >= minZ; z--) {
-    //         for (let x = maxX; x >= minX; x--) {
-    //             if (this.configuration.hasCube([x, minY, z])) {
-    //                 const cube = this.configuration.getCube([x, minY, z])!;
-    //                 if (cube.componentStatus === ComponentStatus.CHUNK_STABLE) {
-    //                     potentialXReducingCubes.push(cube);
-    //                 } else {
-    //                     potentialXReducingCubes.push(null);
-    //                 }
-    //                 break;
-    //             }            
-    //         }
-    //     }
-    //    
-    //     let potentialYReducingCubes: (Cube | null)[] = [];
-    //     // bottom plane
-    //     for (let x = maxX; x >= minX; x--) {
-    //         for (let y = maxY; y >= minY; y--) {
-    //             if (this.configuration.hasCube([x, y, minZ])) {
-    //                 const cube = this.configuration.getCube([x, y, minZ])!;
-    //                 if (cube.componentStatus === ComponentStatus.CHUNK_STABLE) {
-    //                     potentialYReducingCubes.push(cube);
-    //                 } else {
-    //                     potentialYReducingCubes.push(null);
-    //                 }
-    //                 break;
-    //             }
-    //         }
-    //     }
-    //     // left-most plane
-    //     for (let z = maxZ; z >= minZ; z--) {
-    //         for (let y = maxY; y >= minY; y--) {
-    //             if (this.configuration.hasCube([minX, y, z])) {
-    //                 const cube = this.configuration.getCube([minX, y, z])!;
-    //                 if (cube.componentStatus === ComponentStatus.CHUNK_STABLE) {
-    //                     potentialYReducingCubes.push(cube);
-    //                 } else {
-    //                     potentialYReducingCubes.push(null);
-    //                 }
-    //                 break;
-    //             }
-    //         }
-    //     }
-    //    
-    //     let potentialZReducingCubes: (Cube | null)[] = [];
-    //     // front-most plane
-    //     for (let x = maxX; x >= minX; x--) {
-    //         for (let z = maxZ; z >= minZ; z--) {
-    //             if (this.configuration.hasCube([x, minY, z])) {
-    //                 const cube = this.configuration.getCube([x, minY, z])!;
-    //                 if (cube.componentStatus === ComponentStatus.CHUNK_STABLE) {
-    //                     potentialZReducingCubes.push(cube);
-    //                 } else {
-    //                     potentialZReducingCubes.push(null);
-    //                 }
-    //                 break;
-    //             }
-    //         }
-    //     }
-    //     // left-most plane
-    //     for (let y = maxY; y >= minY; y--) {
-    //         for (let z = maxZ; z >= minZ; z--) {
-    //             if (this.configuration.hasCube([minX, y, z])) {
-    //                 const cube = this.configuration.getCube([minX, y, z])!;
-    //                 if (cube.componentStatus === ComponentStatus.CHUNK_STABLE) {
-    //                     potentialZReducingCubes.push(cube);
-    //                 } else {
-    //                     potentialZReducingCubes.push(null);
-    //                 }
-    //                 break;
-    //             }
-    //         }
-    //     }
-    //    
-    //     // if no valid cubes are found, there is no chain move
-    //     if (potentialXReducingCubes.length === 0 &&
-    //         potentialYReducingCubes.length === 0 &&
-    //         potentialZReducingCubes.length === 0) {
-    //         return null;
-    //     }
-    //    
-    //     let potentialXReducingLastCubes: (Cube | null)[] = [];
-    //     for (let cube of potentialXReducingCubes) {
-    //         if (cube === null) {
-    //             potentialXReducingLastCubes.push(null);
-    //             continue;
-    //         }
-    //         let foundLastCube: boolean = false;
-    //         for (let x = cube.p[0] - 1; x > minX; x--) {
-    //             if (!this.configuration.hasCube([x - 1, cube.p[1], cube.p[2]]) && this.configuration.hasCube([x, cube.p[1], cube.p[2]])) {
-    //                 let lastCube = this.configuration.getCube([x, cube.p[1], cube.p[2]])!;
-    //                 if (lastCube.componentStatus === ComponentStatus.LINK_CUT ||
-    //                     lastCube.componentStatus === ComponentStatus.LINK_STABLE) {
-    //                     break;
-    //                 }
-    //                 potentialXReducingLastCubes.push(lastCube);
-    //                 foundLastCube = true;
-    //                 break;
-    //             }
-    //         }
-    //         if (!foundLastCube) potentialXReducingLastCubes.push(null);
-    //     }
-    //    
-    //     let potentialYReducingLastCubes: (Cube | null)[] = [];
-    //     for (let cube of potentialYReducingCubes) {
-    //         if (cube === null) {
-    //             potentialYReducingLastCubes.push(null);
-    //             continue;
-    //         }
-    //         let foundLastCube: boolean = false;
-    //         for (let y = cube.p[1] - 1; y > minY; y--) {
-    //             if (!this.configuration.hasCube([cube.p[0], y - 1, cube.p[2]]) && this.configuration.hasCube([cube.p[0], y, cube.p[2]])) {
-    //                 let lastCube = this.configuration.getCube([cube.p[0], y, cube.p[2]])!;
-    //                 if (lastCube.componentStatus === ComponentStatus.LINK_CUT ||
-    //                     lastCube.componentStatus === ComponentStatus.LINK_STABLE) {
-    //                     break;
-    //                 }
-    //                 potentialYReducingLastCubes.push(lastCube);
-    //                 foundLastCube = true;
-    //                 break;
-    //             }
-    //         }
-    //         if (!foundLastCube) potentialYReducingLastCubes.push(null);
-    //     }
-    //    
-    //     let potentialZReducingLastCubes: (Cube | null)[] = [];
-    //     for (let cube of potentialZReducingCubes) {
-    //         if (cube === null) {
-    //             potentialZReducingLastCubes.push(null);
-    //             continue;
-    //         }
-    //         let foundLastCube: boolean = false;
-    //         for (let z = cube.p[2] - 1; z > minZ; z--) {
-    //             if (!this.configuration.hasCube([cube.p[0], cube.p[1], z - 1]) && this.configuration.hasCube([cube.p[0], cube.p[1], z])) {
-    //                 let lastCube = this.configuration.getCube([cube.p[0], cube.p[1], z])!;
-    //                 if (lastCube.componentStatus === ComponentStatus.LINK_CUT ||
-    //                     lastCube.componentStatus === ComponentStatus.LINK_STABLE) {
-    //                     break;
-    //                 }
-    //                 potentialZReducingLastCubes.push(lastCube);
-    //                 foundLastCube = true;
-    //                 break;
-    //             }
-    //         }
-    //         if (!foundLastCube) potentialZReducingLastCubes.push(null);
-    //     }
-    //    
-    //     if (potentialXReducingCubes.length !== potentialXReducingLastCubes.length) {
-    //         throw "Not every chain cube has a destination.";
-    //     }
-    //     if (potentialYReducingCubes.length !== potentialYReducingLastCubes.length) {
-    //         throw "Not every chain cube has a destination.";
-    //     }
-    //     if (potentialZReducingCubes.length !== potentialZReducingLastCubes.length) {
-    //         throw "Not every chain cube has a destination.";
-    //     }
-    //    
-    //     let potentialMovesWithoutChunkiness: Move[][] = [];
-    //     for (let i = 0; i < potentialXReducingCubes.length; i++) {
-    //         let startCube = potentialXReducingCubes[i];
-    //         let targetCube = potentialXReducingLastCubes[i];
-    //         if (startCube === null || targetCube === null) continue;
-    //         let target: Position = [...targetCube.p];
-    //         target[0]--;
-    //         potentialMovesWithoutChunkiness.push(this.configuration.shortestMovePath(startCube.p, target));
-    //     }
-    //     for (let i = 0; i < potentialYReducingCubes.length; i++) {
-    //         let startCube = potentialYReducingCubes[i];
-    //         let targetCube = potentialYReducingLastCubes[i];
-    //         if (startCube === null || targetCube === null) continue;
-    //         let target: Position = [...targetCube.p];
-    //         target[1]--;
-    //         potentialMovesWithoutChunkiness.push(this.configuration.shortestMovePath(startCube.p, target));
-    //     }
-    //     for (let i = 0; i < potentialZReducingCubes.length; i++) {
-    //         let startCube = potentialZReducingCubes[i];
-    //         let targetCube = potentialZReducingLastCubes[i];
-    //         if (startCube === null || targetCube === null) continue;
-    //         let target: Position = [...targetCube.p];
-    //         target[2]--;
-    //         potentialMovesWithoutChunkiness.push(this.configuration.shortestMovePath(startCube.p, target));
-    //     }
-    //    
-    //     for (let potentialPath of potentialMovesWithoutChunkiness) {
-    //         if (this.preservesChunkiness(potentialPath)) {
-    //             potentialMoves.push(potentialPath);
-    //         }
-    //     }
-    //
-    //     // find the chain move with highest cost
-    //     let maxCostStart = Math.max(...potentialMoves.map(potentialMove => {return this.cost(potentialMove[0].sourcePosition());}));
-    //     let maxMove = potentialMoves.find(potentialMove => {return this.cost(potentialMove[0].sourcePosition()) === maxCostStart;});
-    //
-    //     return maxMove ?? null;
-    // }
     
     /**
      * Checks if a series of moves preserves the "chunkiness",
