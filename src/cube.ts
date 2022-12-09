@@ -225,17 +225,19 @@ class Cube {
 		this.mesh = PIXI3D.Model.from(PIXI.Loader.shared.resources["cube.gltf"]['gltf']).meshes[0];
 		
 		if (world !== null) {
-			let material = new PIXI3D.StandardMaterial();
-			material.baseColor = Color.BASE_COLOR;
-			material.exposure = 1.5;
-			material.metallic = 0.3;
-			material.roughness = 0.5;
-			material.shadowCastingLight = world.shadowLight;
-
-			this.mesh.material = material;
+			// let material = new PIXI3D.StandardMaterial();
+			// material.baseColor = Color.BASE_COLOR;
+			// material.exposure = 1.5;
+			// material.metallic = 0.3;
+			// material.roughness = 0.5;
+			// material.shadowCastingLight = world.shadowLight;
+			//
+			// this.mesh.material = material;
+			
+			this.mesh.material = new CustomMaterial();
 			this.mesh.position.set(0, 0, 0);
 			this.pixi.addChild(this.mesh);
-		
+
 			if (interactive === undefined || interactive) {
 				this.addShield([-1, 0, 0], [0, 0, 90]);  // x
 				this.addShield([1, 0, 0], [0, 0, -90]);  // X
@@ -245,7 +247,6 @@ class Cube {
 				this.addShield([0, 0, 1], [0, 0, 0]);  // Z
 			}
 
-			this.mesh.material = new CustomMaterial();
 			
 			this.updatePixi();
 		}

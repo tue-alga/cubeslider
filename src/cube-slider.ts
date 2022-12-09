@@ -353,6 +353,25 @@ class CubeSlider {
 				this.ctrlHeld = false;
 			}
 		});*/
+		
+		let onCubesMode: boolean = false;
+		window.addEventListener("keydown", (event: KeyboardEvent) => {
+			if (event.key === "Control") {
+				if (this.editMode === EditMode.MODIFY_CUBES) {
+					onCubesMode = true;
+					this.panMode();
+				} else {
+					onCubesMode = false;
+				}
+			}
+		});
+		window.addEventListener("keyup", (event: KeyboardEvent) => {
+			if (event.key === "Control") {
+				if (onCubesMode) {
+					this.modifyCubesMode();
+				}
+			}
+		});
 	}
 
 	select(Cube: Cube): void {
