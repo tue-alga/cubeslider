@@ -71,9 +71,9 @@ class CustomMaterial extends Material {
 			uniform vec3 u_LightPos;
 			uniform vec3 u_ViewPos;
 			
-			const vec3 colorLM = vec3(1.0, 0.0, 0.0);
-			const vec3 colorCorner = vec3(0.0, 1.0, 0.0);
-			const vec3 colorChain = vec3(0.0, 0.0, 1.0);
+			const vec3 colorLM = vec3(244.0, 122.0, 79.0) / 255.0;
+			const vec3 colorCorner = vec3(110.0, 185.0, 241.0) / 255.0;
+			const vec3 colorChain = vec3(169.0, 96.0, 212.0) / 255.0;
 			
 			void main() {
 			  vec3 position = v_Position / 100.0;
