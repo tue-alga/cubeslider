@@ -286,7 +286,7 @@ class CubeSlider {
 
 		this.control = new PIXI3D.CameraOrbitControl(this.app.view);
 		this.control.distance = 20;
-		this.control.target = { x: 0, y: 0, z: 0 };
+		this.control.target = { x: 9.5, y: 0, z: -9.5 }; // these are pixi coordinates
 		this.control.angles.x = 30;
 		// start in MODIFY_CUBES mode
 		this.control.allowControl = false;

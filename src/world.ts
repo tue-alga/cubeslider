@@ -64,9 +64,9 @@ class World {
 		let lightGroundMaterial = new PIXI3D.StandardMaterial();
 		lightGroundMaterial.baseColor = new PIXI3D.Color(1, 1, 1);
 		lightGroundMaterial.exposure = 1.5;
-		for (let x = -10; x < 10; x++) {
+		for (let x = 0; x < 20; x++) {
 			let row: PIXI3D.Mesh3D[] = [];
-			for (let y = -10; y < 10; y++) {
+			for (let y = 0; y < 20; y++) {
 				let tile = this.pixi.addChild(PIXI3D.Mesh3D.createPlane());
 				let pixiCoords = World.worldToPixiCoords([x, y, -0.5]);
 				tile.position.x = pixiCoords[0];
