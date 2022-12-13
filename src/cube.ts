@@ -13,7 +13,11 @@ type Position = [number, number, number];
 class CustomMaterial extends Material {
 	/** The base color of the material. */
 	baseColor: PIXI3D.Color = new PIXI3D.Color(1.0, 1.0, 1.0);
-	lightPos: Float32Array = Vec3.fromValues(100.0, 50.0, 0.0);
+	lightPos: Float32Array = Vec3.fromValues(50.0, -30.0, 20.0); // these are our coordinates, not pixi coords
+	lightPos2: Float32Array = Vec3.fromValues(-50.0, -30.0, -20.0); // these are our coordinates, not pixi coords
+	shininess = 128.0;
+	ambientFactor = 0.5;
+	
 	lmMove: boolean = false;
 	cornerMove: boolean = false;
 	chainMove: boolean = false;
@@ -26,8 +30,11 @@ class CustomMaterial extends Material {
 		shader.uniforms.u_Model = mesh.worldTransform.array;
 		shader.uniforms.u_BaseColor = [this.baseColor.r, this.baseColor.g, this.baseColor.b];
 		shader.uniforms.u_PossibleMoves = [+this.lmMove, +this.cornerMove, +this.chainMove];
-		shader.uniforms.u_LightPos = [this.lightPos[0], this.lightPos[1], this.lightPos[2]];
+		shader.uniforms.u_LightPos = World.worldToPixiCoords([this.lightPos[0], this.lightPos[1], this.lightPos[2]]);
+		shader.uniforms.u_LightPos2 = World.worldToPixiCoords([this.lightPos2[0], this.lightPos2[1], this.lightPos2[2]]);
 		shader.uniforms.u_ViewPos = [Camera.main.x, Camera.main.y, Camera.main.z];
+		shader.uniforms.u_Shininess = this.shininess;
+		shader.uniforms.u_AmbientFactor = this.ambientFactor;
 	}
 
 	// The vertex shader is responsible for converting each vertex position into
@@ -69,7 +76,10 @@ class CustomMaterial extends Material {
 			uniform vec3 u_PossibleMoves;
 			
 			uniform vec3 u_LightPos;
+			uniform vec3 u_LightPos2;
 			uniform vec3 u_ViewPos;
+			uniform float u_Shininess;
+			uniform float u_AmbientFactor;
 			
 			const vec3 colorLM = vec3(244.0, 122.0, 79.0) / 255.0;
 			const vec3 colorCorner = vec3(110.0, 185.0, 241.0) / 255.0;
@@ -138,20 +148,37 @@ class CustomMaterial extends Material {
 			  	color = u_BaseColor;
 			  }
 			  
-			  vec3 normal = v_Normal + 0.5;
+			  vec3 normal = normalize(v_Normal);
 			  
-			  // add diffuse lighting
-			  vec3 lightDir = normalize(u_LightPos - v_FragPos);
-			  float diffuseFactor = max(dot(normal, lightDir), 0.0);	  
+			  vec3 lightColor = vec3(1.0, 1.0, 1.0);
+			  vec3 ambientLight = u_AmbientFactor * lightColor;
 			  
-			  float lightFactor = diffuseFactor;
-			  // let lightFactor range between 0.2 and 0.8
-			  float startRange = 0.5;
-			  float endRange = 0.8;
-			  float range = endRange - startRange;
-			  lightFactor = lightFactor * range + startRange;
-			  
-			  gl_FragColor = vec4(color * lightFactor, 1.0);
+			  vec3 lights[2];
+			  lights[0] = u_LightPos;
+			  lights[1] = u_LightPos2;
+			  vec3 diffuseLight;
+			  vec3 specularLight;
+			  for (int i = 0; i < 2; i++) {
+				  // add diffuse lighting
+				  vec3 lightDir = normalize(lights[i] - v_FragPos);
+				  float diffuseFactor = max(dot(normal, lightDir), 0.0);
+				  
+				  float minRange = 0.2;
+				  float maxRange = 0.8;
+				  float range = maxRange - minRange;
+				  diffuseFactor = (diffuseFactor * range) + minRange;
+				  
+				  diffuseLight += diffuseFactor * lightColor;
+				  
+				  // specular lighting
+				  float specularStrength = 0.5;
+				  vec3 viewDir = normalize(u_ViewPos - v_FragPos);
+				  vec3 reflectDir = reflect(-lightDir, normal);
+				  float specularFactor = pow(max(dot(viewDir, reflectDir), 0.0), u_Shininess);
+				  specularLight += specularStrength * specularFactor * lightColor;
+			  }
+			  vec3 result = (ambientLight + diffuseLight + specularLight) * color;
+			  gl_FragColor = vec4(result, 1.0);
 			}
 			`;
 
@@ -175,9 +202,8 @@ class Color {
 	static readonly LINK_STABLE_COLOR = new PIXI3D.Color(0.9, 0.5, 0.3); //#E6804D
 	static readonly LINK_CUT_COLOR = new PIXI3D.Color(0.95, 0.8, 0.6); // #F2CC99
 	static readonly HEAVY_COLOR = new PIXI3D.Color(0.42,0.93,0.45); //#6AEC73
-	static readonly MOVEALBE_COLOR = new PIXI3D.Color(1, 1, 0); // #ffff00
 	
-	static readonly BASE_COLOR = new PIXI3D.Color(1, 1, 1);
+	static readonly BASE_COLOR = new PIXI3D.Color(0.5, 0.5, 0.5);
 	
 	constructor(public r: number, public g: number, public b: number) {
 	}
@@ -315,7 +341,7 @@ class Cube {
 			if (this.heavyChunk) {
 				material.baseColor = Color.HEAVY_COLOR;
 			} else {
-				material.baseColor = new PIXI3D.Color(1, 1, 1);
+				material.baseColor = Color.BASE_COLOR;
 			}
 		} else {
 			switch (this.componentStatus) {
