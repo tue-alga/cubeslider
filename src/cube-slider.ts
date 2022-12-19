@@ -94,6 +94,7 @@ class CubeSlider {
 	private readonly panButton: IconButton;
 	private readonly selectButton: IconButton;
 	private readonly modifyCubeButton: IconButton;
+	private readonly moveToZeroButton: IconButton;
 	private readonly colorButton: IconColorButton;
 	private readonly deleteButton: IconButton;
 	private readonly saveButton: IconButton;
@@ -186,6 +187,11 @@ class CubeSlider {
 		this.bottomBar.addChild(this.modifyCubeButton);
 
 		this.bottomBar.addChild(new Separator());
+
+		this.moveToZeroButton = new IconButton(
+			"modify-cubes", "Move configuration to (0, 0, 0)", true, "C");
+		this.moveToZeroButton.onClick(this.moveToZero.bind(this));
+		this.bottomBar.addChild(this.moveToZeroButton);
 
 		this.colorButton = new IconColorButton(
 			"color", this.lastColor, "Change color", true);
@@ -697,6 +703,21 @@ class CubeSlider {
 		this.panButton.setPressed(false);
 		this.selectButton.setPressed(false);
 		this.modifyCubeButton.setPressed(true);
+	}
+	
+	moveToZero(): void {
+		const [dx, dy, dz, ,] = this.world.configuration.bounds();
+
+		let json = this.world.serialize();
+		let obj = JSON.parse(json);
+		let cubes: any[] = obj['cubes'];
+		cubes.forEach((cube: any) => {
+			cube["x"] -= dx;
+			cube["y"] -= dy;
+			cube["z"] -= dz;
+		});
+		json = JSON.stringify(obj);
+		this.load(json);
 	}
 
 	delete(): void {
