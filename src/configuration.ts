@@ -193,6 +193,52 @@ class Configuration {
         has['YZ'] = this.hasCube([x, y + 1, z + 1]);
         return has;
     }
+    
+    /**
+     * Checks if a cube is a loose cube
+     */
+    isLooseCube([x, y, z]: Position): boolean {
+        if (!this.hasCube([x, y, z])) return false;
+        let componentStatus = this.getCube([x, y, z])!.componentStatus;
+        if (componentStatus == ComponentStatus.NONE ||
+            componentStatus == ComponentStatus.LINK_CUT ||
+            componentStatus == ComponentStatus.LINK_STABLE) {
+            return false;
+        }
+        let has = this.hasNeighbors([x, y, z]);
+        let directNeighbors = 0;
+        if (has['x']) directNeighbors += 1;
+        if (has['X']) directNeighbors += 1;
+        if (has['y']) directNeighbors += 1;
+        if (has['Y']) directNeighbors += 1;
+        if (has['z']) directNeighbors += 1;
+        if (has['Z']) directNeighbors += 1;
+        return directNeighbors == 1;
+    }
+    
+    hasLooseCube([x, y, z]: Position, direction: string): boolean {
+        switch(direction) {
+            case 'x' : return this.isLooseCube([x - 1, y, z]);
+            case 'X' : return this.isLooseCube([x + 1, y, z]);
+            case 'y' : return this.isLooseCube([x, y - 1, z]);
+            case 'Y' : return this.isLooseCube([x, y + 1, z]);
+            case 'z' : return this.isLooseCube([x, y, z - 1]);
+            case 'Z' : return this.isLooseCube([x, y, z + 1]);
+            case 'xy' : return this.isLooseCube([x - 1, y - 1, z]);
+            case 'xY' : return this.isLooseCube([x - 1, y + 1, z]);
+            case 'xz' : return this.isLooseCube([x - 1, y, z - 1]);
+            case 'xZ' : return this.isLooseCube([x - 1, y, z + 1]);
+            case 'Xy' : return this.isLooseCube([x + 1, y - 1, z]);
+            case 'XY' : return this.isLooseCube([x + 1, y + 1, z]);
+            case 'Xz' : return this.isLooseCube([x + 1, y, z - 1]);
+            case 'XZ' : return this.isLooseCube([x + 1, y, z + 1]);
+            case 'yz' : return this.isLooseCube([x, y - 1, z - 1]);
+            case 'yZ' : return this.isLooseCube([x, y - 1, z + 1]);
+            case 'Yz' : return this.isLooseCube([x, y + 1, z - 1]);
+            case 'YZ' : return this.isLooseCube([x, y + 1, z + 1]);
+        }
+        throw new Error('Tried to query loose cube in invalid move direction "' + direction + '"');
+    }
 
     /**
      * Returns a neighbor of the give cube

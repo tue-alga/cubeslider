@@ -8,6 +8,8 @@ class CompactAlgorithm extends Algorithm {
         printStep("Compacting");
         
         while (!this.configuration.isXYZMonotone()) {
+            yield* this.findLooseCubeMove();
+            
             let freeMove = this.findFreeMove(true);
             let cornerMove = this.findCornerMove(true);
 
@@ -35,8 +37,13 @@ class CompactAlgorithm extends Algorithm {
             } else if (maxMove !== null) {
                 yield* maxMove;
             } else {
-                // no moves possible to compact
-                throw "No compacting moves possible.";
+                let looseCubeMove = this.findLooseCubeMove();
+                if (looseCubeMove.length > 0) {
+                    yield* looseCubeMove;
+                } else {
+                    // no moves possible to compact
+                    throw "No compacting moves possible.";
+                }
             }
         }
     }
@@ -281,6 +288,164 @@ class CompactAlgorithm extends Algorithm {
             }
         }
         return null;
+    }
+
+    /**
+     * Check for special loose cube moves at the end of ribbons
+     */
+    findLooseCubeMove(): Move[] | [] {
+        const [minX, minY, minZ, ,] = this.configuration.bounds();
+        // reverse order the cubes on cost and pick the first with a valid corner move
+        let bounds = this.configuration.bounds();
+        let looseCubesOrdered: Cube[] = [...this.configuration.cubes].filter((cube) => this.configuration.isLooseCube(cube.p)).sort((c1,c2) => this.cost(c2.p, bounds) - this.cost(c1.p, bounds));
+        
+        // check all loose cubes in order if they can do a special loose cube move
+        for (let looseCube of looseCubesOrdered) {
+            // upright ribbon
+            let has = this.configuration.hasNeighbors(looseCube.p);
+            if (has['Z']) {
+                // we are a loose cube underneath some other cube
+                let nbr = this.configuration.getCube([looseCube.p[0], looseCube.p[1], looseCube.p[2] + 1])!;
+                let nbrHas = this.configuration.hasNeighbors(nbr.p);
+                if (nbrHas['Z']) {
+                    if (nbrHas['X'] &&
+                        (!nbrHas['y'] || this.configuration.hasLooseCube(nbr.p, 'y')) &&
+                        (!nbrHas['Y'] || this.configuration.hasLooseCube(nbr.p, 'Y'))) {
+                        // we are in an upright ribbon going in the direction of the x-axis
+                        let secondLooseCube: Cube | undefined = undefined;
+                        if (nbrHas['x']) {
+                            // check if we have two loose cubes
+                            if (this.configuration.isLooseCube([nbr.p[0] - 1, nbr.p[1], nbr.p[2]])) {
+                                secondLooseCube = this.configuration.getCube([nbr.p[0] - 1, nbr.p[1], nbr.p[2]])!;
+                            }
+                        }
+                        if (nbrHas['y']) {
+                            // check if we have two loose cubes
+                            if (this.configuration.isLooseCube([nbr.p[0], nbr.p[1] - 1, nbr.p[2]])) {
+                                secondLooseCube = this.configuration.getCube([nbr.p[0], nbr.p[1] - 1, nbr.p[2]])!;
+                            }
+                        }
+                        
+                        // perform the loose cube case depending on if there is 1 or 2 loose cubes.
+                        let movesToReturn: Move[] = [];
+                        movesToReturn.push(new Move(this.configuration, looseCube.p, "X"));
+                        if (secondLooseCube) {
+                            if (secondLooseCube.p[0] < looseCube.p[0]) {
+                                movesToReturn.push(new Move(this.configuration, secondLooseCube.p, "zX"));
+                            } else {
+                                movesToReturn.push(new Move(this.configuration, secondLooseCube.p, "zY"));
+                            }
+                        } else {
+                            movesToReturn.push(new Move(this.configuration, [looseCube.p[0] + 1, looseCube.p[1], looseCube.p[2]], "X"));
+                            movesToReturn.push(new Move(this.configuration, nbr.p, "zX"));
+                        }
+                        return movesToReturn;
+                    } else if (
+                        nbrHas['Y'] &&
+                        (!nbrHas['x'] || this.configuration.hasLooseCube(nbr.p, 'x')) &&
+                        (!nbrHas['X'] || this.configuration.hasLooseCube(nbr.p, 'X'))) {
+                        // we are in an upright ribbon going in the direction of the y-axis
+                        let secondLooseCube: Cube | undefined = undefined;
+                        if (nbrHas['x']) {
+                            // check if we have two loose cubes
+                            if (this.configuration.isLooseCube([nbr.p[0] - 1, nbr.p[1], nbr.p[2]])) {
+                                secondLooseCube = this.configuration.getCube([nbr.p[0] - 1, nbr.p[1], nbr.p[2]])!;
+                            }
+                        }
+                        if (nbrHas['y']) {
+                            // check if we have two loose cubes
+                            if (this.configuration.isLooseCube([nbr.p[0], nbr.p[1] - 1, nbr.p[2]])) {
+                                secondLooseCube = this.configuration.getCube([nbr.p[0], nbr.p[1] - 1, nbr.p[2]])!;
+                            }
+                        }
+                        
+                        // perform the loose cube case depending on if there is 1 or 2 loose cubes.
+                        let movesToReturn: Move[] = [];
+                        movesToReturn.push(new Move(this.configuration, looseCube.p, "Y"));
+                        if (secondLooseCube) {
+                            if (secondLooseCube.p[0] < looseCube.p[0]) {
+                                movesToReturn.push(new Move(this.configuration, secondLooseCube.p, "zX"));
+                            } else {
+                                movesToReturn.push(new Move(this.configuration, secondLooseCube.p, "zY"));
+                            }
+                        } else {
+                            movesToReturn.push(new Move(this.configuration, [looseCube.p[0], looseCube.p[1] + 1, looseCube.p[2]], "Y"));
+                            movesToReturn.push(new Move(this.configuration, nbr.p, "zY"));
+                        }
+                        return movesToReturn;
+                    }
+                } else if (
+                    !nbrHas['Z'] &&
+                    nbrHas['Y'] &&
+                    nbrHas['X']
+                ){
+                    // we are in a laying ribbon
+
+                    if (this.configuration.hasCube([nbr.p[0] + 2, nbr.p[1], nbr.p[2]])) {
+                        // we are in a laying ribbon following the x-axis
+                        let secondLooseCube: Cube | undefined = undefined;
+                        if (nbrHas['x']) {
+                            // check if we have two loose cubes
+                            if (this.configuration.isLooseCube([nbr.p[0] - 1, nbr.p[1], nbr.p[2]])) {
+                                secondLooseCube = this.configuration.getCube([nbr.p[0] - 1, nbr.p[1], nbr.p[2]])!;
+                            }
+                        }
+                        if (nbrHas['y']) {
+                            // check if we have two loose cubes
+                            if (this.configuration.isLooseCube([nbr.p[0], nbr.p[1] - 1, nbr.p[2]])) {
+                                secondLooseCube = this.configuration.getCube([nbr.p[0], nbr.p[1] - 1, nbr.p[2]])!;
+                            }
+                        }
+
+                        //perform the loose cube case depending on if there is 1 or 2 loose cubes.
+                        let movesToReturn: Move[] = [];
+                        if (secondLooseCube) {
+                            movesToReturn.push(new Move(this.configuration, looseCube.p, "Y"));
+                            if (secondLooseCube.p[0] < looseCube.p[0]) {
+                                movesToReturn.push(new Move(this.configuration, secondLooseCube.p, "zX"));
+                            } else {
+                                movesToReturn.push(new Move(this.configuration, secondLooseCube.p, "zY"));
+                            }
+                        } else {
+                            movesToReturn.push(new Move(this.configuration, looseCube.p, "X"));
+                            movesToReturn.push(new Move(this.configuration, [nbr.p[0], nbr.p[1] + 1, nbr.p[2]], "zX"));
+                        }
+                        return movesToReturn;
+                    } else {
+                        // laying ribbon following the y-axis
+                        let secondLooseCube: Cube | undefined = undefined;
+                        if (nbrHas['x']) {
+                            // check if we have two loose cubes
+                            if (this.configuration.isLooseCube([nbr.p[0] - 1, nbr.p[1], nbr.p[2]])) {
+                                secondLooseCube = this.configuration.getCube([nbr.p[0] - 1, nbr.p[1], nbr.p[2]])!;
+                            }
+                        }
+                        if (nbrHas['y']) {
+                            // check if we have two loose cubes
+                            if (this.configuration.isLooseCube([nbr.p[0], nbr.p[1] - 1, nbr.p[2]])) {
+                                secondLooseCube = this.configuration.getCube([nbr.p[0], nbr.p[1] - 1, nbr.p[2]])!;
+                            }
+                        }
+                        
+                        // perform the loose cube case depending on if there is 1 or 2 loose cubes.
+                        let movesToReturn: Move[] =[];
+                        if (secondLooseCube) {
+                            movesToReturn.push(new Move(this.configuration, looseCube.p, "X"));
+                            if (secondLooseCube.p[0] < looseCube.p[0]) {
+                                movesToReturn.push(new Move(this.configuration, secondLooseCube.p, "zX"));
+                            } else {
+                                movesToReturn.push(new Move(this.configuration, secondLooseCube.p, "zY"));
+                            }
+                        } else {
+                            movesToReturn.push(new Move(this.configuration, looseCube.p, "Y"));
+                            movesToReturn.push(new Move(this.configuration, [nbr.p[0] + 1, nbr.p[1], nbr.p[2]], "zY"))
+                        }
+                        return movesToReturn;
+                    }
+                }
+            }
+        }
+        return [];
     }
     
     /**
