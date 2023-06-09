@@ -8,8 +8,6 @@ class CompactAlgorithm extends Algorithm {
         printStep("Compacting");
         
         while (!this.configuration.isXYZMonotone()) {
-            yield* this.findLooseCubeMove();
-            
             let freeMove = this.findFreeMove(true);
             let cornerMove = this.findCornerMove(true);
 
