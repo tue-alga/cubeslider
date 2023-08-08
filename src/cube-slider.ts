@@ -21,12 +21,6 @@ import { GatherAlgorithm } from './algorithms/gather';
 import {Move} from "./move";
 import {CompactAlgorithm} from "./algorithms/compact";
 import {GatherAndCompactAlgorithm} from "./algorithms/gather-and-compact";
-import type = Mocha.utils.type;
-
-/*import { GatherAndCompactAlgorithm } from './algorithms/gather-and-compact';
-import { CompactAlgorithm } from './algorithms/compact';
-import { CanonicalizeAlgorithm } from './algorithms/canonicalize';
-import { CustomAlgorithm } from './algorithms/custom';*/
 
 enum EditMode {
 	PAN, SELECT, MODIFY_CUBES

@@ -159,7 +159,7 @@ class CompactAlgorithm extends Algorithm {
      */
     findChainMove(stopAfterFirst: boolean, limit?: number): Move[][] | [] {
         const [minX, minY, minZ, ,] = this.configuration.bounds();
-        // reverse order the cubes on cost and pick the first with a valid corner move
+        // reverse order the cubes on cost and pick the first with a valid chain move
         let bounds = this.configuration.bounds();
         let cubesOrdered: Cube[] = [...this.configuration.cubes].sort((c1,c2) => this.cost(c2.p, bounds) - this.cost(c1.p, bounds));
         
@@ -293,7 +293,7 @@ class CompactAlgorithm extends Algorithm {
      */
     findLooseCubeMove(): Move[] | [] {
         const [minX, minY, minZ, ,] = this.configuration.bounds();
-        // reverse order the cubes on cost and pick the first with a valid corner move
+        // reverse order the cubes on cost and pick the first with a valid loose cube move
         let bounds = this.configuration.bounds();
         let looseCubesOrdered: Cube[] = [...this.configuration.cubes].filter((cube) => this.configuration.isLooseCube(cube.p)).sort((c1,c2) => this.cost(c2.p, bounds) - this.cost(c1.p, bounds));
         
@@ -409,7 +409,7 @@ class CompactAlgorithm extends Algorithm {
                             movesToReturn.push(new Move(this.configuration, [nbr.p[0], nbr.p[1] + 1, nbr.p[2]], "zX"));
                         }
                         return movesToReturn;
-                    } else {
+                    } else if (this.configuration.hasCube([nbr.p[0], nbr.p[1] + 2, nbr.p[2]])) {
                         // laying ribbon following the y-axis
                         let secondLooseCube: Cube | undefined = undefined;
                         if (nbrHas['x']) {
