@@ -228,7 +228,6 @@ class Cube {
 	resetPosition: Position;
 	color: Color;
 	componentStatus: ComponentStatus;
-	heavyChunk: boolean;
 	chunkId: number;
 	pixi = new PIXI3D.Container3D();
 	mesh: PIXI3D.Mesh3D;
@@ -244,7 +243,6 @@ class Cube {
 		this.resetPosition = [p[0], p[1], p[2]];
 		this.color = (color === undefined) ? new Color(Color.BASE_COLOR.r, Color.BASE_COLOR.g, Color.BASE_COLOR.b) : color;
 		this.componentStatus = ComponentStatus.NONE;
-		this.heavyChunk = false;
 		this.chunkId = -1;
 		
 		// @ts-ignore
@@ -338,11 +336,7 @@ class Cube {
 			material.chainMove = false;
 		}
 		if (!this.world.showComponentMarks) {
-			if (this.heavyChunk) {
-				material.baseColor = Color.HEAVY_COLOR;
-			} else {
-				material.baseColor = Color.BASE_COLOR;
-			}
+			material.baseColor = Color.BASE_COLOR;
 		} else {
 			switch (this.componentStatus) {
 				case ComponentStatus.CONNECTOR:
@@ -385,9 +379,8 @@ class Cube {
 		this.updatePixi();
 	}
 
-	setComponentStatus(componentStatus: ComponentStatus, heavyChunk: boolean = false): void {
+	setComponentStatus(componentStatus: ComponentStatus): void {
 		this.componentStatus = componentStatus;
-		this.heavyChunk = heavyChunk;
 		if (this.world !== null) {
 			this.updatePixi();
 		}

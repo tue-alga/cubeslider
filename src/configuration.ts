@@ -511,15 +511,14 @@ class Configuration {
     markComponents(cuts: [number, number][] = []): void {
         const [components, chunkIds, chunkSizesPerCube, stable] = this.findComponents(cuts);
         for (let i = 0; i < this.cubes.length; i++) {
-            let heavyChunk = chunkSizesPerCube[i] >= 2 * this.boundingBoxSpan();
             if (components[i] === 2) {
-                this.cubes[i].setComponentStatus(stable[i] ? ComponentStatus.CHUNK_STABLE : ComponentStatus.CHUNK_CUT, heavyChunk);
+                this.cubes[i].setComponentStatus(stable[i] ? ComponentStatus.CHUNK_STABLE : ComponentStatus.CHUNK_CUT);
             } else if (components[i] === 1) {
-                this.cubes[i].setComponentStatus(stable[i] ? ComponentStatus.LINK_STABLE : ComponentStatus.LINK_CUT, heavyChunk);
+                this.cubes[i].setComponentStatus(stable[i] ? ComponentStatus.LINK_STABLE : ComponentStatus.LINK_CUT);
             } else if (components[i] === 3) {
-                this.cubes[i].setComponentStatus(ComponentStatus.CONNECTOR, heavyChunk);
+                this.cubes[i].setComponentStatus(ComponentStatus.CONNECTOR);
             } else {
-                this.cubes[i].setComponentStatus(ComponentStatus.NONE, heavyChunk);
+                this.cubes[i].setComponentStatus(ComponentStatus.NONE);
             }
             this.cubes[i].setChunkId(chunkIds[i]);
         }
