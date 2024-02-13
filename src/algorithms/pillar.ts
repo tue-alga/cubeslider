@@ -418,7 +418,7 @@ class PillarAlgorithm extends Algorithm {
             let p: [number, number] = [pillar[0][0], pillar[0][1]];
             let sides: [number, number][] = [[p[0], p[1] - 1], [p[0] - 1, p[1]], [p[0] + 1, p[1]], [p[0], p[1] + 1]];
             let minZ = this.configuration.bounds()[2];
-            let otherSide = sides.find(s => !(s[0] === side[0] && s[1] === side[1]) && this.inBounds([...s, minZ]))!;
+            let otherSide = sides.find(s => !(s[0] === side[0] && s[1] === side[1]))!;
             
             let bottomZPillar = pillar[0][2];
             
@@ -1054,7 +1054,7 @@ class PillarAlgorithm extends Algorithm {
 
             let minZ = this.configuration.bounds()[2];
             
-            let otherSide = sides.find(s => !(s[0] == side[0] && s[1] == side[1]) && this.inBounds([...s, minZ]))!;
+            let otherSide = sides.find(s => !(s[0] == side[0] && s[1] == side[1]))!;
             
             let moveSequence: Move[] = [];
             
