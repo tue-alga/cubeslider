@@ -223,11 +223,16 @@ enum ComponentStatus {
 	LINK_CUT, LINK_STABLE, CHUNK_CUT, CHUNK_STABLE, CONNECTOR, NONE
 }
 
+enum StableStatus {
+	CUT = 0, STABLE = 1, UNKOWN = 2
+}
+
 class Cube {
 	p: Position;
 	resetPosition: Position;
 	color: Color;
 	componentStatus: ComponentStatus;
+	stableStatus: StableStatus;
 	chunkId: number;
 	pixi = new PIXI3D.Container3D();
 	mesh: PIXI3D.Mesh3D;
@@ -243,6 +248,7 @@ class Cube {
 		this.resetPosition = [p[0], p[1], p[2]];
 		this.color = (color === undefined) ? new Color(Color.BASE_COLOR.r, Color.BASE_COLOR.g, Color.BASE_COLOR.b) : color;
 		this.componentStatus = ComponentStatus.NONE;
+		this.stableStatus = StableStatus.UNKOWN;
 		this.chunkId = -1;
 		
 		// @ts-ignore
@@ -385,6 +391,13 @@ class Cube {
 			this.updatePixi();
 		}
 	}
+	
+	setStableStatus(stableStatus: StableStatus): void {
+		this.stableStatus = stableStatus;
+		if (this.world !== null) {
+			this.updatePixi();
+		}
+	}
 
 	setChunkId(chunkId: number): void {
 		this.chunkId = chunkId;
@@ -412,4 +425,4 @@ class Cube {
 	}
 }
 
-export { Cube, Color, ComponentStatus, Position };
+export { Cube, Color, ComponentStatus, StableStatus, Position };

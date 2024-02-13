@@ -34,6 +34,20 @@ class Move {
             throw new Error('Tried to create move with invalid direction "' + direction + '"');
         }
     }
+    
+    static getDirection(start: Position, end: Position, ) {
+        let direction = '';
+        if (start[0] == end[0] + 1) direction += 'x';
+        if (start[0] == end[0] - 1) direction += 'X';
+        if (start[1] == end[1] + 1) direction += 'y';
+        if (start[1] == end[1] - 1) direction += 'Y';
+        if (start[2] == end[2] + 1) direction += 'z';
+        if (start[2] == end[2] - 1) direction += 'Z';
+        if (!moveDirections.includes(direction)) {
+            throw new Error('The following direction string was created, which is invalid: "' + direction + '"');
+        }
+        return direction;
+    }
 
     /**
      * Returns the coordinate of the cell we're moving from.
@@ -148,7 +162,7 @@ class Move {
         if (!this.isValidIgnoreConnectivity()) {
             return false;
         }
-        if (!this.configuration.isConnected([], this.position)) {
+        if (!this.configuration.isConnected([], [this.position])) {
             return false;
         }
         return true;

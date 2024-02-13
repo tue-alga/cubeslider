@@ -274,7 +274,7 @@ class GatherAlgorithm extends Algorithm {
             if (!capacityCubes[i]) continue;
             
             // if the configuration is still connected without this Cube, we can safely remove it
-            if (this.configuration.isConnected(cuts, this.configuration.cubes[i].p)) {
+            if (this.configuration.isConnected(cuts, [this.configuration.cubes[i].p])) {
                 return this.configuration.cubes[i];
             }
         }

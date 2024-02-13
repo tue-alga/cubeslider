@@ -21,6 +21,7 @@ import { GatherAlgorithm } from './algorithms/gather';
 import {Move} from "./move";
 import {CompactAlgorithm} from "./algorithms/compact";
 import {GatherAndCompactAlgorithm} from "./algorithms/gather-and-compact";
+import {PillarAlgorithm} from "./algorithms/pillar";
 
 enum EditMode {
 	PAN, SELECT, MODIFY_CUBES
@@ -36,12 +37,13 @@ enum SimulationMode {
 class CubeSlider {
 
 	readonly AVAILABLE_ALGORITHMS: { [name: string]: new (world: World) => Algorithm } = {
+		"Pillar": PillarAlgorithm,
 		"Gather": GatherAlgorithm,
 		"Compact": CompactAlgorithm,
 		"Gather & Compact": GatherAndCompactAlgorithm,
 		"Custom move sequence": CustomAlgorithm
 	};
-	selectedAlgorithm = "Gather & Compact";
+	selectedAlgorithm = "Pillar";
 
 	private readonly app: PIXI.Application;
 

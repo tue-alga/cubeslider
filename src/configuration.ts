@@ -2,7 +2,7 @@
  * A single cell in the grid. Contains either a cube (with the ID stored) or
  * nothing (\c null).
  */
-import {ComponentStatus, Cube, Position} from "./cube";
+import {ComponentStatus, Cube, Position, StableStatus} from "./cube";
 import {Move, moveDirections} from "./move";
 
 type WorldCell = {
@@ -199,12 +199,18 @@ class Configuration {
      */
     isLooseCube([x, y, z]: Position): boolean {
         if (!this.hasCube([x, y, z])) return false;
-        let componentStatus = this.getCube([x, y, z])!.componentStatus;
-        if (componentStatus == ComponentStatus.NONE ||
-            componentStatus == ComponentStatus.LINK_CUT ||
-            componentStatus == ComponentStatus.LINK_STABLE) {
+        let stableStatus = this.getCube([x, y, z])!.stableStatus;
+        if (stableStatus === StableStatus.CUT || stableStatus === StableStatus.UNKOWN) {
             return false;
         }
+        return this.isSingleConnectionCube([x, y, z]);
+    }
+
+    /**
+     * Finds if this position has a cube that has only a single neighbor
+     */
+    isSingleConnectionCube([x, y, z]: Position): boolean {
+        if (!this.hasCube([x, y, z])) return false;
         let has = this.hasNeighbors([x, y, z]);
         let directNeighbors = 0;
         if (has['x']) directNeighbors += 1;
@@ -297,7 +303,7 @@ class Configuration {
     validMovesFrom(p: Position): Move[] {
         let moves: Move[] = [];
 
-        if (!this.isConnected([], p)) {
+        if (!this.isConnected([], [p])) {
             return [];
         }
 
@@ -405,14 +411,21 @@ class Configuration {
         }
         return count;
     }
-
+    
     /**
      * Checks if the configuration is connected. If the skip parameter is
      * provided, that Cube is ignored (considered as non-existing).
      * @param cuts a list of pairs of neighboring cubes that are not supposed to be considered neighbors
+     * @param skip a list of positions to skip in the connectedness check
+     * @param cubes a list of cubes that should be checked
      */
-    isConnected(cuts: [number, number][] = [], skip?: Position): boolean {
-        if (!this.cubes.length) {
+    isConnected(cuts: [number, number][] = [], skip?: Position[], cubes: Cube[] = this.cubes): boolean {
+        let cubeNeedsToBeChecked = Array(this.cubes.length).fill(false);
+        for (let c of cubes) {
+            cubeNeedsToBeChecked[this.getCubeId(c.p)!] = true;
+        }
+        
+        if (!cubes.length) {
             return true;
         }
 
@@ -423,20 +436,34 @@ class Configuration {
 
         if (skip) {
             // mark the skipped Cube so we won't visit it again
-            const skipIndex = this.getCubeId(skip);
-            if (skipIndex !== null) {
-                seen[skipIndex] = true;
-                seenCount++;
-
-                // special case: if we were about to start our BFS with the
-                // skipped Cube, then pick another Cube to start with
-                // (note that if the configuration has exactly 1 Cube, which
-                // is then skipped, the function should return true
-                // but that works because the BFS starting at the skipped
-                // Cube will not encounter any Cubes)
-                if (skipIndex === 0 && this.cubes.length > 1) {
-                    queue = [1];
+            const skipIndices: (number | null)[] = skip.map(s => this.getCubeId(s));
+            for (let skipIndex of skipIndices) {
+                if (skipIndex !== null) {
+                    seen[skipIndex] = true;
+                    seenCount++;
                 }
+            }
+            // special case: if we were about to start our BFS with a
+            // skipped Cube, then pick another Cube to start with
+            // (note that if the configuration has exactly 1 Cube, which
+            // is then skipped, the function should return true
+            // but that works because the BFS starting at the skipped
+            // Cube will not encounter any Cubes)
+            
+            // get all possible starting cubes
+            let starts: number[] = cubeNeedsToBeChecked.map(
+                (c: boolean, index: number) => {
+                    if (c) return index;
+                    else return -1;
+                })
+                .filter(item => item !== -1);
+            let startIndex = 0;
+            while (skipIndices.indexOf(starts[startIndex]) !== -1) {
+                startIndex += 1;
+            }
+            let start = starts[startIndex];
+            if (this.cubes.length > start) {
+                queue = [start];
             }
         }
 
@@ -459,13 +486,13 @@ class Configuration {
                 this.getCell([cube.p[0], cube.p[1], cube.p[2] + 1])
             ];
             neighbors.forEach((c) => {
-                if (c.CubeId && !this.cutsContains(cuts, c.CubeId, cubeId)) {
+                if (c.CubeId && !this.cutsContains(cuts, c.CubeId, cubeId) && cubeNeedsToBeChecked[c.CubeId]) {
                     queue.push(c.CubeId);
                 }
             });
         }
 
-        return this.cubes.length === seenCount;
+        return cubes.length === seenCount;
     }
 
     /**
@@ -511,6 +538,7 @@ class Configuration {
     markComponents(cuts: [number, number][] = []): void {
         const [components, chunkIds, chunkSizesPerCube, stable] = this.findComponents(cuts);
         for (let i = 0; i < this.cubes.length; i++) {
+            this.cubes[i].setStableStatus(stable[i] ? StableStatus.STABLE : StableStatus.CUT);
             if (components[i] === 2) {
                 this.cubes[i].setComponentStatus(stable[i] ? ComponentStatus.CHUNK_STABLE : ComponentStatus.CHUNK_CUT);
             } else if (components[i] === 1) {
