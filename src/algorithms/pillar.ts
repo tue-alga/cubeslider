@@ -158,6 +158,19 @@ class PillarAlgorithm extends Algorithm {
         let unlockDir = Move.getDirection(p, [...side, p[2]]);
         return new Move(this.configuration, p, unlockDir);
     }
+    
+    unlockPossibleFlat(p: Position, side: number): boolean {
+        return this.configuration.hasCube(p) &&
+            this.configuration.isSingleConnectionCube(p) &&
+            !this.configuration.hasCube([side, p[1], p[2]]) &&
+            this.configuration.hasCube([p[0], p[1] - 1, p[2]]) &&
+            this.configuration.hasCube([side, p[1] - 1, p[2]]);
+    }
+    
+    unlockMoveFlat(p: Position, side: number): Move {
+        let unlockDir = Move.getDirection(p, [side, p[1], p[2]]);
+        return new Move(this.configuration, p, unlockDir);
+    }
 
     /**
      * From all possible operations of type (b): corner move underneath another pillar,
@@ -852,7 +865,7 @@ class PillarAlgorithm extends Algorithm {
     
     /**
      * From all possible operations of type (e): any potential reducing move,
-     * this finds the move that moves the pillar with the highest cost
+     * this finds the move that moves the cube with the highest cost
      * @param cubesOrdered the cubes in order they should be processed
      * @param stopAfterFirst if the function should return after the first successfully found move
      */
@@ -874,6 +887,34 @@ class PillarAlgorithm extends Algorithm {
                         }
                     }
                 }
+            } else {
+                // check for 2D unlock
+                let minZ = this.configuration.bounds()[2];
+                let p = cube.p;
+                if (p[2] !== minZ) continue;
+                
+                let unlockSide = -1;
+                let unlockingCube: Position = [p[0], p[1] + 1, p[2]];
+                if (this.unlockPossibleFlat(unlockingCube, p[0] + 1)) {
+                    unlockSide = p[0] + 1;
+                } else if (this.unlockPossibleFlat(unlockingCube, p[0] - 1)) {
+                    unlockSide = p[0] - 1;
+                }
+                if (unlockSide === -1) continue;
+                
+                for (let direction of moveDirections) {
+                    let potentialMove = new Move(this.configuration, cube.p, direction);
+                    let target = potentialMove.targetPosition();
+                    if (potentialMove.isValidIgnoreConnectivity() && this.configuration.isConnected([], [p, unlockingCube]) &&
+                        this.cost(cube.p) > this.cost(target) &&
+                        this.inBounds(target)) {
+                        potentialMoves.push([this.unlockMoveFlat(unlockingCube, unlockSide), potentialMove]);
+                        if (stopAfterFirst) {
+                            return potentialMoves;
+                        }
+                    }
+                }
+                
             }
         }
         return potentialMoves;
