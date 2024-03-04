@@ -17,6 +17,7 @@ class Configuration {
     worldGrid: WorldCell[][][] = [];
     cubes: Cube[] = [];
     currentMove: Move | null = null;
+    lastMoves: Move[] = [];
     
     /**
      * Returns the WorldCell at the given coordinate.

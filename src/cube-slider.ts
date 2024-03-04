@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js';
 import * as PIXI3D from 'pixi3d';
 
-import { Cube, Color } from './cube';
+import {Cube, Color, Position} from './cube';
 import { World } from './world';
 import {
 	IconButton,
@@ -94,13 +94,15 @@ class CubeSlider {
 	private readonly colorButton: IconColorButton;
 	private readonly deleteButton: IconButton;
 	private readonly saveButton: IconButton;
+	private readonly extractMovesButton: IconButton;
 
 	private readonly stepCounter: StepCountLabel;
 	private readonly phaseLabel: PhaseLabel;
 	private readonly slowerButton: IconButton;
 	private readonly fasterButton: IconButton;
 	
-	private textArea = document.getElementById('save-textarea') as HTMLTextAreaElement;
+	private saveTextArea = document.getElementById('save-textarea') as HTMLTextAreaElement;
+	private movesTextArea = document.getElementById('moves-textarea') as HTMLTextAreaElement;
 	private ipeArea = document.getElementById('ipe-textarea') as HTMLTextAreaElement;
 
 	constructor(app: PIXI.Application) {
@@ -242,17 +244,27 @@ class CubeSlider {
 		this.fasterButton.onClick(this.faster.bind(this));
 		this.statusBar.addChild(this.fasterButton);
 
+		this.extractMovesButton = new IconButton(
+			"save", "Extract moves", true)
+		this.extractMovesButton.onClick(this.extractMoves.bind(this));
+		this.statusBar.addChild(this.extractMovesButton);
+
 
 		// set up event handlers for dialog buttons
 		const loadButton = document.getElementById('load-button');
 		loadButton!.addEventListener('click', () => {
 			document.getElementById('saveDialog')!.style.display = 'none';
-			this.load(this.textArea.value);
+			this.load(this.saveTextArea.value);
 		});
 
-		const closeButton = document.getElementById('close-button');
-		closeButton!.addEventListener('click', () => {
+		const closeButtonSave = document.getElementById('close-button-saveDialog');
+		closeButtonSave!.addEventListener('click', () => {
 			document.getElementById('saveDialog')!.style.display = 'none';
+		});
+
+		const closeButtonMoves = document.getElementById('close-button-movesDialog');
+		closeButtonMoves!.addEventListener('click', () => {
+			document.getElementById('movesDialog')!.style.display = 'none';
 		});
 
 		const ipeCloseButton = document.getElementById('ipe-close-button');
@@ -430,6 +442,7 @@ class CubeSlider {
 			// first actually execute the current move
 			if (this.world.configuration.currentMove) {
 				this.world.configuration.currentMove.execute();
+				this.world.configuration.lastMoves.push(this.world.configuration.currentMove);
 				this.world.configuration.currentMove = null;
 			}
 			this.world.configuration.markComponents();
@@ -672,6 +685,7 @@ class CubeSlider {
 		this.timeStep = 0;
 		this.runUntil = Infinity;
 		this.algorithm = null;
+		this.world.configuration.lastMoves = [];
 	}
 
 	panMode(): void {
@@ -727,7 +741,24 @@ class CubeSlider {
 		const file = this.world.serialize();
 		const dialogs = document.getElementById('saveDialog');
 		dialogs!.style.display = 'block';
-		this.textArea.value = file;
+		this.saveTextArea.value = file;
+	}
+	
+	private positionToString(p: Position): string {
+		return p[0] + "," + p[1] + "," + p[2];
+	}
+	
+	extractMoves(): void {
+		let file: string = "[";
+		for (let move of this.world.configuration.lastMoves) {
+			file += "[" + this.positionToString(move.position) + "," + this.positionToString(move.targetPosition()) + "],";
+		}
+		file = file.slice(0, -1); // remove trailing comma
+		file += "]";
+		
+		const dialogs = document.getElementById('movesDialog');
+		dialogs!.style.display = 'block';
+		this.movesTextArea.value = file;
 	}
 
 	load(data: string): void {
