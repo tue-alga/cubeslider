@@ -22,6 +22,7 @@ import {Move} from "./move";
 import {CompactAlgorithm} from "./algorithms/compact";
 import {GatherAndCompactAlgorithm} from "./algorithms/gather-and-compact";
 import {PillarAlgorithm} from "./algorithms/pillar";
+import {AStarAlgorithm} from "./algorithms/AStar";
 
 enum EditMode {
 	PAN, SELECT, MODIFY_CUBES
@@ -37,6 +38,7 @@ enum SimulationMode {
 class CubeSlider {
 
 	readonly AVAILABLE_ALGORITHMS: { [name: string]: new (world: World) => Algorithm } = {
+		"AStar": AStarAlgorithm,
 		"Pillar": PillarAlgorithm,
 		"Gather": GatherAlgorithm,
 		"Compact": CompactAlgorithm,

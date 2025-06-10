@@ -19,6 +19,14 @@ class Configuration {
     currentMove: Move | null = null;
     lastMoves: Move[] = [];
     
+    public copy(): Configuration {
+        let copyC = new Configuration();
+        for (let c of this.cubes) {
+            copyC.addCube(new Cube(null, c.p, c.color));
+        }
+        return copyC;
+    }
+    
     /**
      * Returns the WorldCell at the given coordinate.
      */
@@ -35,6 +43,41 @@ class Configuration {
             };
         }
         return this.worldGrid[x][y][z];
+    }
+
+    /**
+     * Checks if the current configuration has the same cubes at the same spots at some other configuration
+     */
+    public equals(c: Configuration) {
+        // [minX, minY, minZ, maxX, maxY, maxZ]
+        let thisBounds = this.bounds();
+        let otherBounds = c.bounds();
+        
+        let newBounds = [
+            Math.min(thisBounds[0], otherBounds[0]),
+            Math.min(thisBounds[1], otherBounds[1]),
+            Math.min(thisBounds[2], otherBounds[2]),
+            Math.max(thisBounds[3], otherBounds[3]),            
+            Math.max(thisBounds[4], otherBounds[4]),
+            Math.max(thisBounds[5], otherBounds[5]),
+        ]
+        
+        for (let x = newBounds[0]; x <= newBounds[3]; x++) {
+            for (let y = newBounds[1]; y <= newBounds[4]; y++) {
+                for (let z = newBounds[2]; z <= newBounds[5]; z++) {
+                    let p: Position = [x, y, z];
+                    let other = c.getCell(p).CubeId;
+                    let thisOne = this.getCell(p).CubeId;
+                    if ((other === null && thisOne !== null) || (other !== null && thisOne === null)) {
+                        return false;
+                    }
+                    // if (c.worldGrid[x][y][z].CubeId !== this.worldGrid[x][y][z].CubeId) {
+                    //     return false;
+                    // }
+                }
+            }
+        }
+        return true;
     }
 
     /**
